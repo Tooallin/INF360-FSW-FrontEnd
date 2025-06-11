@@ -16,17 +16,40 @@ const Chat: React.FC = () => {
     const [input, setInput] = useState('');
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const handleSend = () => {
+    const handleSend = async () => {
         if (input.trim()) {
             const userMessage = `Tú: ${input.trim()}`;
-            const botReply = 'Gracias por tu mensaje';
             setMessages(prev => ({
                 ...prev,
-                [currentConversation]: [...prev[currentConversation], userMessage, botReply]
+                [currentConversation]: [...prev[currentConversation], userMessage]
             }));
             setInput('');
+            try {
+                const response = await fetch('http://localhost:8080/api/chat/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: input.trim() }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Respuesta no OK del servidor');
+                }
+
+                const data = await response.json();
+                const botReply = `Bot: ${data.reply}`;
+
+                setMessages(prev => ({
+                    ...prev,
+                    [currentConversation]: [...prev[currentConversation], botReply]
+                }));
+            } catch (error) {
+                console.error('Error al enviar mensaje al backend:', error);
+            }
         }
     };
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, currentConversation]);
