@@ -25,12 +25,16 @@ const Chat: React.FC = () => {
             }));
             setInput('');
             try {
-                const response = await fetch('http://localhost:8080/api/chat/message', {
+                const response = await fetch('http://localhost:8000/api/message/create', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: input.trim() }),
+                    body: JSON.stringify({
+                        id_chat: 1,
+                        user_question: input.trim(),
+                        ai_response: ""
+                    }),
                 });
 
                 if (!response.ok) {
@@ -38,7 +42,7 @@ const Chat: React.FC = () => {
                 }
 
                 const data = await response.json();
-                const botReply = `Bot: ${data.reply}`;
+                const botReply = `Bot: ${data.ai_response}`;
 
                 setMessages(prev => ({
                     ...prev,
