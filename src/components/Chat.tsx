@@ -6,7 +6,7 @@ interface MessageMap {
 }
 
 const Chat: React.FC = () => {
-    const [conversations] = useState(['Conversación 1', 'Conversación 2', 'Conversación 3']);
+    const [conversations, setConversations] = useState(['Conversación 1']);
     const [currentConversation, setCurrentConversation] = useState(conversations[0]);
     const [messages, setMessages] = useState<MessageMap>({
         'Conversación 1': [],
@@ -16,6 +16,18 @@ const Chat: React.FC = () => {
     const [input, setInput] = useState('');
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [isTyping, setIsTyping] = useState(false);
+
+    const handleAddConversation = () => {
+        const newId = conversations.length + 1;
+        const newConversation = `Conversación ${newId}`;
+        setConversations(prev => [...prev, newConversation]);
+        setMessages(prev => ({
+            ...prev,
+            [newConversation]: []
+        }));
+        setCurrentConversation(newConversation);
+    };
     const handleSend = async () => {
         if (input.trim()) {
             const userMessage = `Tú: ${input.trim()}`;
@@ -24,28 +36,32 @@ const Chat: React.FC = () => {
                 [currentConversation]: [...prev[currentConversation], userMessage]
             }));
             setInput('');
+            setIsTyping(true); 
             try {
-                const response = await fetch('http://localhost:8080/api/chat/message', {
+                const response = await fetch('http://localhost:8000/api/message/create', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: input.trim() }),
+                    body: JSON.stringify({
+                        id_chat: 1,
+                        user_question: input.trim(),
+                        ai_response: ""
+                    }),
                 });
-
                 if (!response.ok) {
                     throw new Error('Respuesta no OK del servidor');
                 }
-
                 const data = await response.json();
-                const botReply = `Bot: ${data.reply}`;
-
+                const botReply = `Bot: ${data.ai_response}`;
                 setMessages(prev => ({
                     ...prev,
                     [currentConversation]: [...prev[currentConversation], botReply]
                 }));
             } catch (error) {
                 console.error('Error al enviar mensaje al backend:', error);
+            } finally {
+                setIsTyping(false); 
             }
         }
     };
@@ -55,25 +71,24 @@ const Chat: React.FC = () => {
     }, [messages, currentConversation]);
     return (
         <div className="chat-layout">
-            {isSidebarVisible && (
-                <div className="sidebar">
-                    <h3><br></br></h3>
-                    <ul>
-                        {conversations.map((conv) => (
-                        <li
-                            key={conv}
-                            onClick={() => {
-                            setCurrentConversation(conv);
-                            setIsSidebarVisible(false);
-                            }}
-                            className={conv === currentConversation ? 'active' : ''}
-                        >
-                            {conv}
-                        </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
+            <div className={`sidebar ${isSidebarVisible ? 'sidebar-visible' : 'sidebar-hidden'}`}>
+                <h3><br /></h3>
+                <ul>
+                <li onClick={handleAddConversation} className="add-chat">✚ Nuevo chat</li>
+                {conversations.map((conv) => (
+                    <li
+                    key={conv}
+                    onClick={() => {
+                        setCurrentConversation(conv);
+                        setIsSidebarVisible(false);
+                    }}
+                    className={conv === currentConversation ? 'active' : ''}
+                    >
+                    {conv}
+                    </li>
+                ))}
+                </ul>
+            </div>
             <div className="chat-container">
                 <button
                     className="hamburger-btn"
@@ -85,9 +100,20 @@ const Chat: React.FC = () => {
                 <h3 className='titulo'>Remember me</h3> 
                 <div className="messages-box">
                     {messages[currentConversation].length === 0 && <p className="text">¿En que puedo ayudarte?</p>}
-                    {messages[currentConversation].map((msg, i) => (
-                        <div key={i} className="mb-2">{msg}</div>
-                    ))}
+                    {messages[currentConversation].map((msg, i) => {
+                        const isUser = msg.startsWith('Tú:');
+                        return (
+                            <div
+                                key={i}
+                                className={`message ${isUser ? 'user-message' : 'bot-message'}`}
+                            >
+                                {msg}
+                            </div>
+                        );
+                    })}
+                    {isTyping && (
+                    <div className="typing-indicator">Bot está escribiendo...</div>
+                    )}
                     <div ref={messagesEndRef} />
                 </div>
                 <div className="input-group">

@@ -1,10 +1,24 @@
 /* Sidebar ------------------------------------------------------*/
 .sidebar {
-    background-color: #a6b1e1; 
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 220px;
+    height: 100vh;
+    background-color: #B0C4DE;
     color: #fff;
     padding: 15px;
     box-sizing: border-box;
-    height: 98vh;
+    transition: transform 0.3s ease-in-out;
+    z-index: 10;
+}
+
+.sidebar-visible {
+    transform: translateX(0);
+}
+
+.sidebar-hidden {
+    transform: translateX(-100%);
 }
 .sidebar h2,
 .sidebar h3 {
@@ -21,9 +35,10 @@
 .sidebar ul li {
     margin: 15px 0;
     cursor: pointer;
-    padding: 10px;
+    padding: 8px;
     border-radius: 5px;
-    background-color: #c3cde6;
+    background-color: #E0F2F7;
+    color:#4F5C6C;
 }
 
 .sidebar li:hover {
@@ -31,9 +46,23 @@
 }
 
 .sidebar li.active {
-    background-color: #849bce;
+    background-color: #6495ED;
+    color:white !important
+    
 }
 
+.add-chat {
+    cursor: pointer;
+    color: #4F5C6C;     /*Color letras añadir chat*/
+    margin-top: 10px;
+    background-color: white!important;
+    border: 1px solid #5d8edb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.add-chat:hover {
+    text-decoration: none;
+}
 /* Chat ---------------------------------------------------------*/
 .chat-layout {
     display: flex;
@@ -47,20 +76,57 @@
     display: flex;
     flex-direction: column;
     padding: 20px;
-    background-color: #f0f4f8;
+    background-color: #E0F2F7;      /*Exterior al chat*/
     height: 92vh;
 }
+.typing-indicator {
+    font-style: italic;
+    color: rgb(0, 0, 0);
+    margin: 5px 0;
+    padding-left: 10px;
+    animation: blink 1.2s infinite;
+}
 
+@keyframes blink {
+    0% { opacity: 0.2; }
+    50% { opacity: 1; }
+    100% { opacity: 0.2; }
+}
 .messages-box {
     flex: 1;
     overflow-y: auto;
     margin-bottom: 10px;
-    background: #ffffff;
-    padding: 15px;
+    background: #ffffff;    /*Fondo del chat*/
+    padding: 5px;
     border-radius: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid #6495ED;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+.message {
+    max-width: 70%;
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    border-radius: 15px;
+    font-size: 14px;
+    word-break: break-word;
 }
 
+.user-message {
+    background-color: #B0C4DE;  /*Color del mensaje ingresado por el usuario*/
+    align-self: flex-end;
+    text-align: right;
+    border-top-right-radius: 0;
+    
+}
+
+.bot-message {
+    background-color: #EAF0F4;  /*Color chat de la respuesta*/
+    align-self: flex-start;
+    text-align: left;
+    border-top-left-radius: 0;
+}
 .input-group {
     display: flex;
     gap: 10px;
@@ -70,12 +136,13 @@
     flex: 1;
     padding: 10px;
     border-radius: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid #6495ED;
+
 }
 
 .boton-enviar {
-    background-color: #70a1ff; 
-    color: white;
+    background-color: #6495ED;  /*Boton enviar*/
+    color: white;           /*Color texto boton chat*/
     border: none;
     padding: 10px 20px;
     border-radius: 8px;
@@ -98,7 +165,7 @@
     font-size: 24px;
     cursor: pointer;
     z-index: 1000;
-    color: black !important;
+    color: #4F5C6C !important;    /*Color icono 3 rayitas*/
 }
 
 .hamburger-btn:hover {
@@ -108,10 +175,17 @@
 /* Otros --------------------------------------------------------*/
 .titulo {
     text-align: center;
-    color: #2c3e50;
+    font-size: 2rem;
+    font-weight: bold;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+    margin: 20px 0;
+    background: linear-gradient(to right, #2F4F6F, #1cafd4);    /*Color título chat*/
+    background-clip:white;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 .text{
     text-align: center;
 }
-
-
