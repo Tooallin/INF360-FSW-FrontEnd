@@ -11,6 +11,7 @@
     box-sizing: border-box;
     transition: transform 0.3s ease-in-out;
     z-index: 10;
+    overflow-y:auto;
 }
 
 .sidebar-visible {
@@ -58,6 +59,7 @@
     background-color: white!important;
     border: 1px solid #5d8edb;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    text-align: center;
 }
 
 .add-chat:hover {

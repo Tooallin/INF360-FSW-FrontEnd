@@ -9,9 +9,7 @@ const Chat: React.FC = () => {
     const [conversations, setConversations] = useState(['Conversación 1']);
     const [currentConversation, setCurrentConversation] = useState(conversations[0]);
     const [messages, setMessages] = useState<MessageMap>({
-        'Conversación 1': [],
-        'Conversación 2': [],
-        'Conversación 3': []
+        'Conversación 1': []
     });
     const [input, setInput] = useState('');
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
@@ -21,7 +19,7 @@ const Chat: React.FC = () => {
     const handleAddConversation = () => {
         const newId = conversations.length + 1;
         const newConversation = `Conversación ${newId}`;
-        setConversations(prev => [...prev, newConversation]);
+        setConversations(prev => [newConversation,...prev]);
         setMessages(prev => ({
             ...prev,
             [newConversation]: []
