@@ -1,3 +1,9 @@
+/* body ------------------------------------------------------*/
+html, body {
+    margin: 0;
+    padding: 0;
+    background-color: #dff1f8; 
+}
 /* Sidebar ------------------------------------------------------*/
 .sidebar {
     position: absolute;
@@ -5,7 +11,7 @@
     left: 0;
     width: 220px;
     height: 100vh;
-    background-color: #B0C4DE;
+    background-color: #aec4df;
     color: #fff;
     padding: 15px;
     box-sizing: border-box;
@@ -38,17 +44,17 @@
     cursor: pointer;
     padding: 8px;
     border-radius: 5px;
-    background-color: #E0F2F7;
+    background-color: #CFA5FF;
     color:#4F5C6C;
     text-align: center;
 }
 
 .sidebar li:hover {
-    background-color: #b0b9db;
+    background-color: #AE81E0;
 }
 
 .sidebar li.active {
-    background-color: #6495ED;
+    background-color: #AE81E0;
     color:white !important
     
 }
@@ -69,7 +75,7 @@
 /* Chat ---------------------------------------------------------*/
 .chat-layout {
     display: flex;
-    height: 97vh;
+    height: 100%;
     font-family: 'Segoe UI', sans-serif;
     overflow: hidden;
 }
@@ -79,8 +85,8 @@
     display: flex;
     flex-direction: column;
     padding: 20px;
-    background-color: #E0F2F7;      /*Exterior al chat*/
-    height: 92vh;
+    background-color: #dff1f8;      /*Exterior al chat*/
+    height: 93vh;
 }
 .typing-indicator {
     font-style: italic;
@@ -98,14 +104,15 @@
 .messages-box {
     flex: 1;
     overflow-y: auto;
-    margin-bottom: 10px;
+    margin-bottom: 3px;
     background: #ffffff;    /*Fondo del chat*/
-    padding: 5px;
+    padding: 2px;
     border-radius: 8px;
-    border: 1px solid #6495ED;
+    border: 2px solid #accfeb;   /*borde del chat*/
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    color:#0d0022;
 }
 .message {
     max-width: 70%;
@@ -117,15 +124,14 @@
 }
 
 .user-message {
-    background-color: #B0C4DE;  /*Color del mensaje ingresado por el usuario*/
+    background-color: #c59af6;  /*Color del mensaje ingresado por el usuario*/
     align-self: flex-end;
     text-align: right;
-    border-top-right-radius: 0;
-    
+    border-top-right-radius: 0;    
 }
 
 .bot-message {
-    background-color: #EAF0F4;  /*Color chat de la respuesta*/
+    background-color: #f3e8ff;  /*Color chat de la respuesta*/
     align-self: flex-start;
     text-align: left;
     border-top-left-radius: 0;
@@ -178,17 +184,114 @@
 /* Otros --------------------------------------------------------*/
 .titulo {
     text-align: center;
-    font-size: 2rem;
+    font-size: 1.6rem;
     font-weight: bold;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     letter-spacing: 1px;
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
     margin: 20px 0;
-    background: linear-gradient(to right, #2F4F6F, #1cafd4);    /*Color título chat*/
+    background: linear-gradient(to right, #6e46dd, #1cafd4);    /*Color título chat*/
     background-clip:white;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 .text{
     text-align: center;
+}
+/* barra de mensaje inferior --------------------------------------------------------*/
+.input-bar {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    background-color: white;      /*Color fondo fuera de la barra del mensjae*/
+    border-radius: 12px;
+    border: 2px solid #accfeb;   /*Borde de la parte donde se escribe*/
+
+}
+
+.chat-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 20px;
+    font-size: 14px;
+    outline: none;
+    background-color: #fff;     /*Color fondo */
+    margin-right: 10px;
+}
+
+.send-button {
+    width: 45px;
+    height: 45px;
+    border: none;
+    border-radius: 50%;
+    background-color: #6e46dd;  /*Color boton*/
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.send-button:hover {
+    background-color: #5c76d6;  /*Color boton al ser presionado*/
+}
+
+.send-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Navbar --------------------------------------------------------*/
+.navbar {
+    position: relative;
+    left: -30px;
+    width: 114%;
+    top: -20px;
+    height: 60px;
+    background-color: #fff;
+    border-bottom: 8px  #dff1f8;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.navbar-logo-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.navbar-logo {
+    width: 30px;
+    height: 30px;
+}
+
+/* logo bot --------------------------------------------------------*/
+.bot-message-with-avatar {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    margin-bottom: 10px;
+    padding-left: 0 !important;
+}
+
+.bot-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #6e46dd;
+}
+
+.bot-message-bubble {
+    background-color: #EAF0F4;
+    padding: 10px 15px;
+    border-radius: 15px;
+    max-width: 70%;
+    font-size: 14px;
+    border-top-left-radius: 0;
+    text-align: left;
+    word-break: break-word;
 }

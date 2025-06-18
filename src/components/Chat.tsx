@@ -51,7 +51,7 @@ const Chat: React.FC = () => {
                     throw new Error('Respuesta no OK del servidor');
                 }
                 const data = await response.json();
-                const botReply = `Bot: ${data.ai_response}`;
+                const botReply = `Memo: ${data.ai_response}`;
                 setMessages(prev => ({
                     ...prev,
                     [currentConversation]: [...prev[currentConversation], botReply]
@@ -88,42 +88,63 @@ const Chat: React.FC = () => {
                 </ul>
             </div>
             <div className="chat-container">
-                <button
-                    className="hamburger-btn"
-                    onClick={() => setIsSidebarVisible(!isSidebarVisible)}
-                    aria-label="Toggle menu"
-                >
-                    ☰
-                </button>
-                <h3 className='titulo'>Remember me</h3> 
+                <div className="navbar">
+                    <button
+                        className="hamburger-btn"
+                        onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                        aria-label="Toggle menu"
+                    >
+                        ☰
+                    </button>
+                    <div className="navbar-logo-title">
+                        <img src="image/logoRemember.png" alt="Logo" className="navbar-logo" />
+                        <span className="titulo">Remember me</span>
+                    </div>
+                </div>
                 <div className="messages-box">
-                    {messages[currentConversation].length === 0 && <p className="text">¿En que puedo ayudarte?</p>}
-                    {messages[currentConversation].map((msg, i) => {
+                    {messages[currentConversation].length === 0 ? (
+                    <div className="message bot-message-with-avatar">
+                        <img src="image/logoBot.png" alt="Bot" className="bot-avatar" />
+                        <div className="bot-message-bubble">¿En qué puedo ayudarte?</div>
+                    </div>
+                    ) : (
+                    messages[currentConversation].map((msg, i) => {
                         const isUser = msg.startsWith('Tú:');
+
+                        if (isUser) {
                         return (
-                            <div
-                                key={i}
-                                className={`message ${isUser ? 'user-message' : 'bot-message'}`}
-                            >
-                                {msg}
+                            <div key={i} className="message user-message">
+                            {msg}
                             </div>
                         );
-                    })}
+                        }
+
+                        return (
+                        <div key={i} className="message bot-message-with-avatar">
+                            <img src="image/logoBot.png" alt="Bot" className="bot-avatar" />
+                            <div className="bot-message-bubble">{msg.replace('Memo: ', '')}</div>
+                        </div>
+                        );
+                    })
+                    )}
                     {isTyping && (
-                    <div className="typing-indicator">Bot está escribiendo...</div>
+                    <div className="typing-indicator">Memo está escribiendo...</div>
                     )}
                     <div ref={messagesEndRef} />
                 </div>
-                <div className="input-group">
+                <div className="input-bar">
                     <input
-                        className="form-control"
+                        type="text"
+                        className="chat-input"
+                        placeholder="Escribe un mensaje ..."
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Escribe un mensaje..."
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     />
-                    <button className="boton-enviar" onClick={handleSend}>
-                        Enviar
+                    <button className="send-button" onClick={handleSend}>
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="#fff">
+                            <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
+                        </svg>
                     </button>
                 </div>
             </div>
