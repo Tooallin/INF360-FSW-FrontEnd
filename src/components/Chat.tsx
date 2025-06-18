@@ -15,6 +15,38 @@ const Chat: React.FC = () => {
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [isTyping, setIsTyping] = useState(false);
+    const [isTypingInitialMessage, setIsTypingInitialMessage] = useState(false);
+
+    const handleBaseMessage = async () => {
+        try {
+            setIsTypingInitialMessage(true);
+            const response = await fetch('http://10.147.19.99:8000/api/message/createbase', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Respuesta no OK del servidor');
+            }
+            const data = await response.json();
+            const botReply = `Memo: ${data.ai_response}`;
+            setBaseMessage(botReply);
+            setIsTypingInitialMessage(false);
+        } catch (error) {
+            setIsTypingInitialMessage(false);
+            setBaseMessage('Ocurrió un error inesperado, intenta más tarde');
+            console.error('Error al enviar mensaje al backend:', error);
+        } finally {
+            setIsTypingInitialMessage(false);
+        }
+    };
+
+    const [baseMessage, setBaseMessage] = useState('');
+
+    useEffect(() => {
+        handleBaseMessage();
+    }, []);
 
     const handleAddConversation = () => {
         const newId = conversations.length + 1;
@@ -104,8 +136,16 @@ const Chat: React.FC = () => {
                 <div className="messages-box">
                     {messages[currentConversation].length === 0 ? (
                     <div className="message bot-message-with-avatar">
-                        <img src="image/logoBot.png" alt="Bot" className="bot-avatar" />
-                        <div className="bot-message-bubble">¿En qué puedo ayudarte?</div>
+                        {isTypingInitialMessage ? 
+                            (
+                                <div className="typing-indicator">Memo está escribiendo...</div>
+                            ) : (
+                                <>
+                                    <img src="image/logoBot.png" alt="Bot" className="bot-avatar" />
+                                    <div className="bot-message-bubble">{baseMessage}</div>
+                                </>
+                            )
+                        }
                     </div>
                     ) : (
                     messages[currentConversation].map((msg, i) => {
