@@ -20,7 +20,7 @@ const Chat: React.FC = () => {
     const handleBaseMessage = async () => {
         try {
             setIsTyping(true);
-            const response = await fetch('http://10.147.19.99:8000/api/message/createbase', {
+            const response = await fetch('http://10.147.19.90:8000/api/message/createbase', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -69,7 +69,7 @@ const Chat: React.FC = () => {
             setInput('');
             setIsTyping(true); 
             try {
-                const response = await fetch('http://10.147.19.99:8000/api/message/create', {
+                const response = await fetch('http://10.147.19.90:8000/api/message/create', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -102,11 +102,11 @@ const Chat: React.FC = () => {
     };
 
     useEffect(() => {
-        if (!hasRun.current) {
+        if (messages[currentConversation].length == 0) {
             handleBaseMessage();
-            hasRun.current = true;
         }
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentConversation]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
