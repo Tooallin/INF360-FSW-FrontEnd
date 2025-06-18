@@ -15,11 +15,11 @@ const Chat: React.FC = () => {
     const [isSidebarVisible, setIsSidebarVisible] = useState(true);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [isTyping, setIsTyping] = useState(false);
-    const [isTypingInitialMessage, setIsTypingInitialMessage] = useState(false);
+    const hasRun = useRef(false);
 
     const handleBaseMessage = async () => {
         try {
-            setIsTypingInitialMessage(true);
+            setIsTyping(true);
             const response = await fetch('http://10.147.19.99:8000/api/message/createbase', {
                 method: 'GET',
                 headers: {
@@ -31,22 +31,22 @@ const Chat: React.FC = () => {
             }
             const data = await response.json();
             const botReply = `Memo: ${data.ai_response}`;
-            setBaseMessage(botReply);
-            setIsTypingInitialMessage(false);
+            setMessages(prev => ({
+                ...prev,
+                [currentConversation]: [...prev[currentConversation], botReply]
+            }));
+            setIsTyping(false);
         } catch (error) {
-            setIsTypingInitialMessage(false);
-            setBaseMessage('Ocurrió un error inesperado, intenta más tarde');
+            setIsTyping(false);
+            setMessages(prev => ({
+                ...prev,
+                [currentConversation]: [...prev[currentConversation], 'Ocurrió un error inesperado, intenta más tarde']
+            }));
             console.error('Error al enviar mensaje al backend:', error);
         } finally {
-            setIsTypingInitialMessage(false);
+            setIsTyping(false);
         }
     };
-
-    const [baseMessage, setBaseMessage] = useState('');
-
-    useEffect(() => {
-        handleBaseMessage();
-    }, []);
 
     const handleAddConversation = () => {
         const newId = conversations.length + 1;
@@ -58,6 +58,7 @@ const Chat: React.FC = () => {
         }));
         setCurrentConversation(newConversation);
     };
+
     const handleSend = async () => {
         if (input.trim()) {
             const userMessage = `Tú: ${input.trim()}`;
@@ -68,7 +69,7 @@ const Chat: React.FC = () => {
             setInput('');
             setIsTyping(true); 
             try {
-                const response = await fetch('http://localhost:8000/api/message/create', {
+                const response = await fetch('http://10.147.19.99:8000/api/message/create', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -89,12 +90,23 @@ const Chat: React.FC = () => {
                     [currentConversation]: [...prev[currentConversation], botReply]
                 }));
             } catch (error) {
+                setMessages(prev => ({
+                    ...prev,
+                    [currentConversation]: [...prev[currentConversation], 'Ocurrió un error inesperado, intenta más tarde']
+                }));
                 console.error('Error al enviar mensaje al backend:', error);
             } finally {
                 setIsTyping(false); 
             }
         }
     };
+
+    useEffect(() => {
+        if (!hasRun.current) {
+            handleBaseMessage();
+            hasRun.current = true;
+        }
+    }, []);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -134,7 +146,7 @@ const Chat: React.FC = () => {
                     </div>
                 </div>
                 <div className="messages-box">
-                    {messages[currentConversation].length === 0 ? (
+                    {/*messages[currentConversation].length === 0 ? (
                     <div className="message bot-message-with-avatar">
                         {isTypingInitialMessage ? 
                             (
@@ -147,7 +159,7 @@ const Chat: React.FC = () => {
                             )
                         }
                     </div>
-                    ) : (
+                    ) : */(
                     messages[currentConversation].map((msg, i) => {
                         const isUser = msg.startsWith('Tú:');
 
