@@ -2,12 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, Animated , KeyboardAvoidingView, Platform
 } from 'react-native';
+import { Audio } from 'expo-av'; 
+import * as Speech from 'expo-speech';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+// import * as FileSystem from 'expo-file-system'; 
 
 interface MessageMap {
   [conversationId: string]: string[];
 }
 
 const Chat: React.FC = () => {
+  const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [blinkAnim] = useState(new Animated.Value(1));
   const [conversations, setConversations] = useState(['Conversación 1']);
   const [currentConversation, setCurrentConversation] = useState(conversations[0]);
@@ -15,9 +20,73 @@ const Chat: React.FC = () => {
     'Conversación 1': []
   });
   const [input, setInput] = useState('');
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+
+  const startRecording = async () => {
+    try {
+    console.log("Iniciando grabación...");
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Se necesitan permisos de micrófono');
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const rec = new Audio.Recording();
+      await rec.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
+      await rec.startAsync();
+      setRecording(rec);
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Error iniciando grabación:", err);
+    }
+  };
+
+  const stopRecording = async () => {
+    console.log("Deteniendo grabación...");
+    setIsRecording(false);
+    if (!recording) return;
+    await recording.stopAndUnloadAsync();
+    const uri = recording.getURI();
+    console.log("Archivo guardado en:", uri);
+    // Reproducir la grabación
+    // const { sound } = await Audio.Sound.createAsync({ uri });
+    // await sound.playAsync();
+
+    // 👇 Enviar el audio al backend
+    if (uri) {
+      try {
+        const formData = new FormData();
+        formData.append("file", {
+          uri,
+          type: "audio/m4a",
+          name: "recording.m4a",
+        } as any);
+        const response = await fetch('http://10.147.19.90:8000/api/message/create', {
+          method: "POST",
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          body: formData,
+        });
+        const data = await response.json();
+        const botReply = `Memo: ${data.ai_response || 'No se obtuvo respuesta'}`;
+        setMessages(prev => ({
+          ...prev,
+          [currentConversation]: [...prev[currentConversation], botReply]
+        }));
+      } catch (err) {
+        console.error("Error subiendo audio:", err);
+      }
+    }
+    setRecording(null);
+  };
 
   const handleBaseMessage = async () => {
     try {
@@ -33,11 +102,17 @@ const Chat: React.FC = () => {
         ...prev,
         [currentConversation]: [...prev[currentConversation], botReply]
       }));
+      if (isAudioEnabled) {
+        Speech.speak(data.ai_response); 
+      }
     } catch (error) {
       setMessages(prev => ({
         ...prev,
         [currentConversation]: [...prev[currentConversation], 'Ocurrió un error inesperado, intenta más tarde']
       }));
+      if (isAudioEnabled) {
+        Speech.speak('Ocurrió un error inesperado, intenta más tarde'); 
+      }
       console.error('Error al enviar mensaje al backend:', error);
     } finally {
       setIsTyping(false);
@@ -74,6 +149,7 @@ const Chat: React.FC = () => {
             ai_response: ""
           }),
         });
+
         if (!response.ok) throw new Error('Respuesta no OK del servidor');
         const data = await response.json();
         const botReply = `Memo: ${data.ai_response}`;
@@ -81,17 +157,24 @@ const Chat: React.FC = () => {
           ...prev,
           [currentConversation]: [...prev[currentConversation], botReply]
         }));
+        if (isAudioEnabled) {
+        Speech.speak(data.ai_response); 
+      }
       } catch (error) {
         setMessages(prev => ({
           ...prev,
           [currentConversation]: [...prev[currentConversation], 'Ocurrió un error inesperado, intenta más tarde']
         }));
+        if (isAudioEnabled) {
+        Speech.speak("Ocurrió un error inesperado, intenta más tarde"); 
+        }
         console.error('Error al enviar mensaje al backend:', error);
       } finally {
         setIsTyping(false);
       }
     }
   };
+  
   useEffect(() => {
     if (isTyping) {
       Animated.loop(
@@ -176,8 +259,18 @@ const Chat: React.FC = () => {
               source={require('../../assets/images/logoRemember.png')}
               style={styles.navbarLogo}
             />
-            <Text style={styles.title}>Remember me</Text>
+            <Text style={styles.title}>RememberMe</Text>
           </View>
+          <TouchableOpacity
+            style={{ marginLeft: 'auto' }}
+            onPress={() => setIsAudioEnabled(!isAudioEnabled)}
+          >
+            <Icon
+              name={isAudioEnabled ? "volume-high" : "volume-off"}
+              size={28}
+              color="#000"
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Messages */}
@@ -224,8 +317,14 @@ const Chat: React.FC = () => {
             onSubmitEditing={handleSend}
             returnKeyType="send"
           />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
-            <Text style={styles.sendButtonText}>➤</Text>
+          <TouchableOpacity
+            style={[styles.sendButton, { backgroundColor: isRecording ? 'red' : '#6e46dd' }]}
+            onPress={isRecording ? stopRecording : startRecording}
+          >
+            <Icon name="microphone" size={30} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.sendButton,{marginLeft:3}]} onPress={handleSend}>
+            <Text style={[styles.sendButtonText, { marginTop: -5 }]}>➤</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -295,17 +394,19 @@ const styles = StyleSheet.create({
   },
 
   hamburgerBtn: {
-    marginRight: 10,
     padding: 10,
   },
   hamburgerIcon: {
     fontSize: 24,
-    color: '#4F5C6C',
+    color: '#000000ff',
+    marginLeft:-10,
   },
 
   navbarLogoTitle: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight:'auto',
+    marginLeft:'auto',
   },
   navbarLogo: {
     width: 30,
@@ -403,7 +504,7 @@ const styles = StyleSheet.create({
 
   sendButtonText: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 28,
   },
 });
 
