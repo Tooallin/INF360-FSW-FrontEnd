@@ -5,19 +5,28 @@ import {
 import { Audio } from 'expo-av'; 
 import * as Speech from 'expo-speech';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-// import * as FileSystem from 'expo-file-system'; 
+import { API_URL } from '@env';
 
+// import * as FileSystem from 'expo-file-system'; 
+interface Conversation {
+  id: number;
+  name: string;
+}
 interface MessageMap {
-  [conversationId: string]: string[];
+  [conversationId: number]: string[];
 }
 
 const Chat: React.FC = () => {
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [blinkAnim] = useState(new Animated.Value(1));
-  const [conversations, setConversations] = useState(['Conversación 1']);
-  const [currentConversation, setCurrentConversation] = useState(conversations[0]);
+  const [conversations, setConversations] = useState([
+    { id: 1, name: "Conversación 1" }
+  ]);
+  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(
+    conversations.length > 0 ? conversations[0] : null
+  );
   const [messages, setMessages] = useState<MessageMap>({
-    'Conversación 1': []
+  1: []
   });
   const [input, setInput] = useState('');
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
@@ -68,7 +77,7 @@ const Chat: React.FC = () => {
           type: "audio/m4a",
           name: "recording.m4a",
         } as any);
-        const response = await fetch('http://10.147.19.90:8000/api/message/create', {
+        const response = await fetch(`${API_URL}/message/create`, {
           method: "POST",
           headers: {
             "Content-Type": "multipart/form-data",
@@ -79,7 +88,7 @@ const Chat: React.FC = () => {
         const botReply = `Memo: ${data.ai_response || 'No se obtuvo respuesta'}`;
         setMessages(prev => ({
           ...prev,
-          [currentConversation]: [...prev[currentConversation], botReply]
+          [currentConversation!.id]: [...prev[currentConversation!.id], botReply]
         }));
       } catch (err) {
         console.error("Error subiendo audio:", err);
@@ -91,7 +100,7 @@ const Chat: React.FC = () => {
   const handleBaseMessage = async () => {
     try {
       setIsTyping(true);
-      const response = await fetch('http://10.147.19.90:8000/api/message/createbase', {
+      const response = await fetch(`${API_URL}/message/createbase`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -100,7 +109,7 @@ const Chat: React.FC = () => {
       const botReply = `Memo: ${data.ai_response}`;
       setMessages(prev => ({
         ...prev,
-        [currentConversation]: [...prev[currentConversation], botReply]
+        [currentConversation!.id]: [...prev[currentConversation!.id], botReply]
       }));
       if (isAudioEnabled) {
         Speech.speak(data.ai_response); 
@@ -108,7 +117,7 @@ const Chat: React.FC = () => {
     } catch (error) {
       setMessages(prev => ({
         ...prev,
-        [currentConversation]: [...prev[currentConversation], 'Ocurrió un error inesperado, intenta más tarde']
+        [currentConversation!.id]: [...prev[currentConversation!.id], 'Ocurrió un error inesperado, intenta más tarde']
       }));
       if (isAudioEnabled) {
         Speech.speak('Ocurrió un error inesperado, intenta más tarde'); 
@@ -121,12 +130,9 @@ const Chat: React.FC = () => {
 
   const handleAddConversation = () => {
     const newId = conversations.length + 1;
-    const newConversation = `Conversación ${newId}`;
+    const newConversation = { id: newId, name: `Conversación ${newId}` };
     setConversations(prev => [newConversation, ...prev]);
-    setMessages(prev => ({
-      ...prev,
-      [newConversation]: []
-    }));
+    setMessages(prev => ({ ...prev, [newConversation.id]: [] }));
     setCurrentConversation(newConversation);
   };
 
@@ -135,16 +141,23 @@ const Chat: React.FC = () => {
       const userMessage = `Tú: ${input.trim()}`;
       setMessages(prev => ({
         ...prev,
-        [currentConversation]: [...prev[currentConversation], userMessage]
+        [currentConversation!.id]: [...prev[currentConversation!.id], userMessage]
       }));
       setInput('');
       setIsTyping(true);
+      const payload = {
+        id_chat: currentConversation!.id,
+        user_question: input.trim(),
+        ai_response: ""
+      };
+      console.log("JSON que se enviará al backend:", JSON.stringify(payload));
+      console.log("API_URL",API_URL);
       try {
-        const response = await fetch('http://10.147.19.90:8000/api/message/create', {
+        const response = await fetch(`${API_URL}/message/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            id_chat: 1,
+            id_chat: currentConversation!.id,
             user_question: input.trim(),
             ai_response: ""
           }),
@@ -155,7 +168,7 @@ const Chat: React.FC = () => {
         const botReply = `Memo: ${data.ai_response}`;
         setMessages(prev => ({
           ...prev,
-          [currentConversation]: [...prev[currentConversation], botReply]
+          [currentConversation!.id]: [...prev[currentConversation!.id], botReply]
         }));
         if (isAudioEnabled) {
         Speech.speak(data.ai_response); 
@@ -163,7 +176,7 @@ const Chat: React.FC = () => {
       } catch (error) {
         setMessages(prev => ({
           ...prev,
-          [currentConversation]: [...prev[currentConversation], 'Ocurrió un error inesperado, intenta más tarde']
+          [currentConversation!.id]: [...prev[currentConversation!.id], 'Ocurrió un error inesperado, intenta más tarde']
         }));
         if (isAudioEnabled) {
         Speech.speak("Ocurrió un error inesperado, intenta más tarde"); 
@@ -197,10 +210,55 @@ const Chat: React.FC = () => {
   }, [isTyping]);
 
   useEffect(() => {
-    if (messages[currentConversation].length === 0) {
+    if (messages[currentConversation!.id].length === 0) {
       handleBaseMessage();
     }
   }, [currentConversation]);
+
+  useEffect(() => {
+  const fetchConversations = async () => {
+    try {
+      const response = await fetch(`${API_URL}/chat/list`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error('Error al obtener chats');
+      const data: { chat_ids?: number[] } = await response.json();
+
+      let chats: Conversation[] = [];
+
+      if (data.chat_ids && data.chat_ids.length > 0) {
+        // Crear chats dinámicamente según IDs del backend
+        chats = data.chat_ids.map(id => ({ id, name: `Conversación ${id}` }));
+      } else {
+        // Fallback: crear chat por defecto como antes
+        chats = [{ id: 1, name: 'Conversación 1' }];
+      }
+
+      setConversations(chats);
+
+      // Seleccionar el primer chat como activo
+      setCurrentConversation(chats[0]);
+
+      // Inicializar messages para cada chat
+      const initialMessages: MessageMap = {};
+      chats.forEach(chat => {
+        initialMessages[chat.id] = [];
+      });
+      setMessages(initialMessages);
+
+    } catch (error) {
+      console.error('Error al obtener la lista de chats, usando chat por defecto:', error);
+      // Fallback en caso de error
+      const defaultChat = [{ id: 1, name: 'Conversación 1' }];
+      setConversations(defaultChat);
+      setCurrentConversation(defaultChat[0]);
+      setMessages({ 1: [] });
+    }
+  };
+
+  fetchConversations();
+  }, []);
 
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -222,21 +280,21 @@ const Chat: React.FC = () => {
           <ScrollView>
             {conversations.map((conv) => (
               <TouchableOpacity
-                key={conv}
+                key={conv.id}
                 onPress={() => {
                   setCurrentConversation(conv);
                   setIsSidebarVisible(false);
                 }}
                 style={[
                   styles.conversationItem,
-                  conv === currentConversation && styles.activeConversationItem,
+                  conv.id === currentConversation!.id && styles.activeConversationItem,
                 ]}
               >
                 <Text style={[
                   styles.conversationText,
-                  conv === currentConversation && styles.activeConversationText,
+                  conv.id === currentConversation!.id && styles.activeConversationText,
                 ]}>
-                  {conv}
+                  {conv.name}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -279,7 +337,7 @@ const Chat: React.FC = () => {
           ref={scrollViewRef}
           contentContainerStyle={{ padding: 10 }}
         >
-          {messages[currentConversation].map((msg, i) => {
+          {messages[currentConversation!.id].map((msg, i) => {
             const isUser = msg.startsWith('Tú:');
             if (isUser) {
               return (
