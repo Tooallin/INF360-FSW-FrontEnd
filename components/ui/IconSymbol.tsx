@@ -48,6 +48,7 @@ const MAPPING = {
   'password': 'password',
   'at': 'alternate-email',
   'lock.contour': 'lock-outline',
+  'check-circle': 'check-circle',
 } as const;
 
 /**
