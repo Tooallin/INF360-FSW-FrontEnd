@@ -49,11 +49,16 @@ const Chat: React.FC = () => {
 
       if (!response.ok) throw new Error("Error al cargar los mensajes del chat");
 
-      const data: string[] = await response.json();
+      const data: { id: number; conversation_id: number; role: string; content: string; created_at: string; }[] = await response.json();
+
+      // Formatear los mensajes a strings
+      const formattedMessages = data.map(msg =>
+        msg.role === "user" ? `Tú: ${msg.content}` : `Memo: ${msg.content}`
+      );
 
       setMessages(prev => ({
         ...prev,
-        [conversationId]: data || [],
+        [conversationId]: formattedMessages,
       }));
 
     } catch (error) {
@@ -166,97 +171,132 @@ const Chat: React.FC = () => {
     }
   };
 
-  const handleAddConversation = () => {
-    // Conversación solo local (todavía no existe en el back)
+  const handleAddConversation = async () => {
     const newConversation = { id: -1, name: "Nueva conversación" };
 
     setConversations(prev => [newConversation, ...prev]);
+    // Inicializar el array vacío para este chat
     setMessages(prev => ({ ...prev, [newConversation.id]: [] }));
     setCurrentConversation(newConversation);
+
+    // Esperar la respuesta de la IA antes de mostrar
+    try {
+      setIsTyping(true);
+      const token = await AsyncStorage.getItem("authToken");
+      const response = await fetch(`${API_URL}/message/createbase`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      });
+      const data = await response.json();
+      const botReply = `Memo: ${data.ai_response}`;
+
+      // Guardar mensaje base
+      setBaseMessage(data.ai_response);
+
+      // Actualizar mensajes
+      setMessages(prev => ({
+        ...prev,
+        [newConversation.id]: [botReply]  // Aquí reemplazamos [] con el mensaje de IA
+      }));
+
+      if (isAudioEnabled) Speech.speak(data.ai_response);
+    } catch (error) {
+      console.error('Error al obtener mensaje inicial:', error);
+      setMessages(prev => ({
+        ...prev,
+        [newConversation.id]: ['Error obteniendo mensaje inicial']
+      }));
+    } finally {
+      setIsTyping(false);
+    }
   };
 
-const handleSend = async () => {
-  if (!input.trim() || !currentConversation) return;
+  const handleSend = async () => {
+    if (!input.trim() || !currentConversation) return;
 
-  let conversationId = currentConversation.id;
-  console.log("Id de la conversacion",conversationId);
-  // Si es local (-1), crearla en el back
-  if (conversationId < 0) {
+    let conversationId = currentConversation.id;
+
+    // Si es local (-1), crearla en el backend
+    if (conversationId < 0) {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const res = await fetch(`${API_URL}/conversation/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ia_msg_in: baseMessage || "Inicio de conversación",
+          }),
+        });
+        const data = await res.json();
+        conversationId = data.id;
+
+        // Actualizar conversación actual con el id real
+        setConversations(prev =>
+          prev.map(c => c.id === -1 ? { ...c, id: conversationId } : c)
+        );
+        setCurrentConversation({ ...currentConversation, id: conversationId, name: `Conversación ${conversationId}` });
+        setMessages(prev => {
+          const updated = { ...prev };
+          updated[conversationId] = updated[-1] || [];
+          delete updated[-1];
+          return updated;
+        });
+      } catch (err) {
+        console.error("Error creando conversación:", err);
+        return;
+      }
+    }
+
+    // Mensaje del usuario
+    const userMsg = `Tú: ${input.trim()}`;
+    const placeholder = "Memo está escribiendo...";
+    setMessages(prev => ({
+      ...prev,
+      [conversationId]: [...(prev[conversationId] || []), userMsg, placeholder],
+    }));
+    setInput('');
+    setIsTyping(true);
+
     try {
       const token = await AsyncStorage.getItem("authToken");
-      const res = await fetch(`${API_URL}/conversation/create`, {
+      await fetch(`${API_URL}/message/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
-        ia_msg_in: baseMessage || "Inicio de conversación" 
-      }),
+          conversation_id: conversationId,
+          content: input.trim(),
+          role: "user",
+        }),
       });
-      
-      const data = await res.json();
-      console.log("Respuesta el back linea 197: ",data)
-      conversationId = data.id;
-      console.log("Id de la conversacion",conversationId);
 
-      // Actualizar conversación actual con el id real
-      setConversations(prev =>
-        prev.map(c => c.id === -1 ? { ...c, id: conversationId } : c)
-      );
-      setCurrentConversation({ ...currentConversation, id: conversationId, name: `Conversación ${conversationId}` });
-      setMessages(prev => {
-        const updated = { ...prev };
-        updated[conversationId] = updated[-1] || [];
-        delete updated[-1];
-        return updated;
-      });
+      // Traer todos los mensajes actualizados desde el backend
+      await fetchConversationMessages(conversationId);
+
+      // Reproducir audio si está activado
+      if (isAudioEnabled) {
+        const lastMessage = messages[conversationId]?.slice(-1)[0]?.replace('Memo: ', '');
+        if (lastMessage) Speech.speak(lastMessage);
+      }
+
     } catch (err) {
-      console.error("Error creando conversación:", err);
-      return;
+      console.error("Error enviando mensaje:", err);
+      setMessages(prev => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] || []), "Error enviando mensaje"],
+      }));
+    } finally {
+      setIsTyping(false);
     }
-  }
-
-  // Mensaje del usuario
-  const userMsg = `Tú: ${input.trim()}`;
-  setMessages(prev => ({
-    ...prev,
-    [conversationId]: [...(prev[conversationId] || []), userMsg],
-  }));
-  setInput('');
-  setIsTyping(true);
-
-  try {
-    const token = await AsyncStorage.getItem("authToken");
-    console.log("id de la conversacion: ",conversationId);
-    const response = await fetch(`${API_URL}/message/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        conversation_id: conversationId,
-        content: input.trim(),
-        role: "user",
-      }),
-    });
-
-    const data = await response.json();
-    const botReply = `Memo: ${data.ai_response}`;
-    setMessages(prev => ({
-      ...prev,
-      [conversationId]: [...prev[conversationId], botReply],
-    }));
-    if (isAudioEnabled) {
-      Speech.speak(data.ai_response);
-    }
-  } catch (err) {
-    console.error("Error enviando mensaje:", err);
-  } finally {
-    setIsTyping(false);
-  }
-};
+  };
   useEffect(() => {
     if (isTyping) {
       Animated.loop(
@@ -279,12 +319,48 @@ const handleSend = async () => {
   }, [isTyping]);
 
   useEffect(() => {
-    if (currentConversation) {
+    const loadBaseMessage = async () => {
+      if (!currentConversation) return;
+
       // Solo si no hay mensajes aún
       if (!messages[currentConversation.id] || messages[currentConversation.id].length === 0) {
-        handleBaseMessage(currentConversation.id);
+        setIsTyping(true);
+        try {
+          const token = await AsyncStorage.getItem("authToken");
+          const response = await fetch(`${API_URL}/message/createbase`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+          });
+          const data = await response.json();
+          const botReply = `Memo: ${data.ai_response}`;
+
+          // Guardar mensaje base para usar en handleSend
+          setBaseMessage(data.ai_response);
+
+          // Actualizar mensajes
+          setMessages(prev => ({
+            ...prev,
+            [currentConversation.id]: [...(prev[currentConversation.id] || []), botReply]
+          }));
+
+          if (isAudioEnabled) Speech.speak(data.ai_response);
+
+        } catch (error) {
+          console.error('Error al obtener mensaje inicial:', error);
+          setMessages(prev => ({
+            ...prev,
+            [currentConversation.id]: [...(prev[currentConversation.id] || []), 'Error obteniendo mensaje inicial']
+          }));
+        } finally {
+          setIsTyping(false);
+        }
       }
-    }
+    };
+
+    loadBaseMessage();
   }, [currentConversation]);
 
   useEffect(() => {
@@ -298,14 +374,16 @@ const handleSend = async () => {
           },
       });
       if (!response.ok) throw new Error('Error al obtener chats');
-      const data: { chat_ids?: number[] } = await response.json();
-      console.log("IDs: ",data);
+      const dataFromBackend: {id:number, user_id:number, updated_at:string}[] = await response.json();
+      console.log("Data completa:", dataFromBackend);
 
       let chats: Conversation[] = [];
 
-      if (data.chat_ids && data.chat_ids.length > 0) {
-        // Crear chats dinámicamente según IDs del backend
-        chats = data.chat_ids.map(id => ({ id, name: `Conversación ${id}` }));
+      if (dataFromBackend && dataFromBackend.length > 0) {
+        chats = dataFromBackend.map(chat => ({
+          id: chat.id,
+          name: `Conversación ${chat.id}`
+        }));
       } else {
         // Fallback: crear chat por defecto como antes
         chats = [{ id: -1, name: 'Nueva conversación' }];
@@ -438,7 +516,7 @@ const handleSend = async () => {
           })}
           {isTyping && (
             <Animated.Text style={[styles.typingIndicator, { opacity: blinkAnim }]}>
-              Memo está escribiendo...
+              {/* Memo está escribiendo... */}
             </Animated.Text>
           )}
         </ScrollView>
