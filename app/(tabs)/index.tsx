@@ -5,7 +5,10 @@ import {
 import { Audio } from 'expo-av'; 
 import * as Speech from 'expo-speech';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { API_URL } from '@env';
+// import { API_URL } from '@env';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+
 
 // import * as FileSystem from 'expo-file-system'; 
 interface Conversation {
@@ -17,23 +20,50 @@ interface MessageMap {
 }
 
 const Chat: React.FC = () => {
+  const API_URL="http://10.147.19.74:8000/api";
+  const [baseMessage, setBaseMessage] = useState<string | null>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [blinkAnim] = useState(new Animated.Value(1));
-  const [conversations, setConversations] = useState([
-    { id: 1, name: "Conversación 1" }
-  ]);
-  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(
-    conversations.length > 0 ? conversations[0] : null
-  );
-  const [messages, setMessages] = useState<MessageMap>({
-  1: []
-  });
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<MessageMap>({});
   const [input, setInput] = useState('');
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+
+  const fetchConversationMessages = async (conversationId: number) => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      if (!token) throw new Error("No se encontró token, redirigir al login");
+
+      const response = await fetch(`${API_URL}/message/getall/${conversationId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Error al cargar los mensajes del chat");
+
+      const data: string[] = await response.json();
+
+      setMessages(prev => ({
+        ...prev,
+        [conversationId]: data || [],
+      }));
+
+    } catch (error) {
+      console.error('Error al cargar los mensajes del chat:', error);
+      setMessages(prev => ({
+        ...prev,
+        [conversationId]: ['Ocurrió un error cargando la conversación'],
+      }));
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -77,10 +107,12 @@ const Chat: React.FC = () => {
           type: "audio/m4a",
           name: "recording.m4a",
         } as any);
+        const token = await AsyncStorage.getItem("authToken");
         const response = await fetch(`${API_URL}/message/create`, {
           method: "POST",
           headers: {
-            "Content-Type": "multipart/form-data",
+            // 'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: formData,
         });
@@ -97,19 +129,25 @@ const Chat: React.FC = () => {
     setRecording(null);
   };
 
-  const handleBaseMessage = async () => {
+  const handleBaseMessage = async (conversationId:number) => {
     try {
       setIsTyping(true);
+      const token = await AsyncStorage.getItem("authToken");
       const response = await fetch(`${API_URL}/message/createbase`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
       });
-      if (!response.ok) throw new Error('Respuesta no OK del servidor');
       const data = await response.json();
       const botReply = `Memo: ${data.ai_response}`;
+      // ✅ Guardar el mensaje base para luego usarlo en handleSend
+      setBaseMessage(data.ai_response);
+
       setMessages(prev => ({
         ...prev,
-        [currentConversation!.id]: [...prev[currentConversation!.id], botReply]
+        [conversationId]: [...prev[conversationId], botReply]
       }));
       if (isAudioEnabled) {
         Speech.speak(data.ai_response); 
@@ -117,77 +155,108 @@ const Chat: React.FC = () => {
     } catch (error) {
       setMessages(prev => ({
         ...prev,
-        [currentConversation!.id]: [...prev[currentConversation!.id], 'Ocurrió un error inesperado, intenta más tarde']
+        [conversationId]: [...prev[conversationId], 'Ocurrió un error inesperado, intenta más tarde']
       }));
       if (isAudioEnabled) {
         Speech.speak('Ocurrió un error inesperado, intenta más tarde'); 
       }
-      console.error('Error al enviar mensaje al backend:', error);
+      console.error('Error al enviar mensaje al backend, estoy en handleBaseMessage:', error);
     } finally {
       setIsTyping(false);
     }
   };
 
   const handleAddConversation = () => {
-    const newId = conversations.length + 1;
-    const newConversation = { id: newId, name: `Conversación ${newId}` };
+    // Conversación solo local (todavía no existe en el back)
+    const newConversation = { id: -1, name: "Nueva conversación" };
+
     setConversations(prev => [newConversation, ...prev]);
     setMessages(prev => ({ ...prev, [newConversation.id]: [] }));
     setCurrentConversation(newConversation);
   };
 
-  const handleSend = async () => {
-    if (input.trim()) {
-      const userMessage = `Tú: ${input.trim()}`;
-      setMessages(prev => ({
-        ...prev,
-        [currentConversation!.id]: [...prev[currentConversation!.id], userMessage]
-      }));
-      setInput('');
-      setIsTyping(true);
-      const payload = {
-        id_chat: currentConversation!.id,
-        user_question: input.trim(),
-        ai_response: ""
-      };
-      console.log("JSON que se enviará al backend:", JSON.stringify(payload));
-      console.log("API_URL",API_URL);
-      try {
-        const response = await fetch(`${API_URL}/message/create`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id_chat: currentConversation!.id,
-            user_question: input.trim(),
-            ai_response: ""
-          }),
-        });
+const handleSend = async () => {
+  if (!input.trim() || !currentConversation) return;
 
-        if (!response.ok) throw new Error('Respuesta no OK del servidor');
-        const data = await response.json();
-        const botReply = `Memo: ${data.ai_response}`;
-        setMessages(prev => ({
-          ...prev,
-          [currentConversation!.id]: [...prev[currentConversation!.id], botReply]
-        }));
-        if (isAudioEnabled) {
-        Speech.speak(data.ai_response); 
-      }
-      } catch (error) {
-        setMessages(prev => ({
-          ...prev,
-          [currentConversation!.id]: [...prev[currentConversation!.id], 'Ocurrió un error inesperado, intenta más tarde']
-        }));
-        if (isAudioEnabled) {
-        Speech.speak("Ocurrió un error inesperado, intenta más tarde"); 
-        }
-        console.error('Error al enviar mensaje al backend:', error);
-      } finally {
-        setIsTyping(false);
-      }
+  let conversationId = currentConversation.id;
+  console.log("Id de la conversacion",conversationId);
+  // Si es local (-1), crearla en el back
+  if (conversationId < 0) {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      const res = await fetch(`${API_URL}/conversation/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+        ia_msg_in: baseMessage || "Inicio de conversación" 
+      }),
+      });
+      
+      const data = await res.json();
+      console.log("Respuesta el back linea 197: ",data)
+      conversationId = data.id;
+      console.log("Id de la conversacion",conversationId);
+
+      // Actualizar conversación actual con el id real
+      setConversations(prev =>
+        prev.map(c => c.id === -1 ? { ...c, id: conversationId } : c)
+      );
+      setCurrentConversation({ ...currentConversation, id: conversationId, name: `Conversación ${conversationId}` });
+      setMessages(prev => {
+        const updated = { ...prev };
+        updated[conversationId] = updated[-1] || [];
+        delete updated[-1];
+        return updated;
+      });
+    } catch (err) {
+      console.error("Error creando conversación:", err);
+      return;
     }
-  };
-  
+  }
+
+  // Mensaje del usuario
+  const userMsg = `Tú: ${input.trim()}`;
+  setMessages(prev => ({
+    ...prev,
+    [conversationId]: [...(prev[conversationId] || []), userMsg],
+  }));
+  setInput('');
+  setIsTyping(true);
+
+  try {
+    const token = await AsyncStorage.getItem("authToken");
+    console.log("id de la conversacion: ",conversationId);
+    const response = await fetch(`${API_URL}/message/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        content: input.trim(),
+        role: "user",
+      }),
+    });
+
+    const data = await response.json();
+    const botReply = `Memo: ${data.ai_response}`;
+    setMessages(prev => ({
+      ...prev,
+      [conversationId]: [...prev[conversationId], botReply],
+    }));
+    if (isAudioEnabled) {
+      Speech.speak(data.ai_response);
+    }
+  } catch (err) {
+    console.error("Error enviando mensaje:", err);
+  } finally {
+    setIsTyping(false);
+  }
+};
   useEffect(() => {
     if (isTyping) {
       Animated.loop(
@@ -210,20 +279,27 @@ const Chat: React.FC = () => {
   }, [isTyping]);
 
   useEffect(() => {
-    if (messages[currentConversation!.id].length === 0) {
-      handleBaseMessage();
+    if (currentConversation) {
+      // Solo si no hay mensajes aún
+      if (!messages[currentConversation.id] || messages[currentConversation.id].length === 0) {
+        handleBaseMessage(currentConversation.id);
+      }
     }
   }, [currentConversation]);
 
   useEffect(() => {
   const fetchConversations = async () => {
     try {
-      const response = await fetch(`${API_URL}/chat/list`, {
+      const token = await AsyncStorage.getItem("authToken");
+      const response = await fetch(`${API_URL}/conversation/getall`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Authorization': `Bearer ${token}`
+          },
       });
       if (!response.ok) throw new Error('Error al obtener chats');
       const data: { chat_ids?: number[] } = await response.json();
+      console.log("IDs: ",data);
 
       let chats: Conversation[] = [];
 
@@ -232,7 +308,7 @@ const Chat: React.FC = () => {
         chats = data.chat_ids.map(id => ({ id, name: `Conversación ${id}` }));
       } else {
         // Fallback: crear chat por defecto como antes
-        chats = [{ id: 1, name: 'Conversación 1' }];
+        chats = [{ id: -1, name: 'Nueva conversación' }];
       }
 
       setConversations(chats);
@@ -250,7 +326,7 @@ const Chat: React.FC = () => {
     } catch (error) {
       console.error('Error al obtener la lista de chats, usando chat por defecto:', error);
       // Fallback en caso de error
-      const defaultChat = [{ id: 1, name: 'Conversación 1' }];
+      const defaultChat = [{ id: -1, name: 'Nueva conversación' }];
       setConversations(defaultChat);
       setCurrentConversation(defaultChat[0]);
       setMessages({ 1: [] });
@@ -281,18 +357,20 @@ const Chat: React.FC = () => {
             {conversations.map((conv) => (
               <TouchableOpacity
                 key={conv.id}
-                onPress={() => {
+                onPress={async() => {
                   setCurrentConversation(conv);
                   setIsSidebarVisible(false);
+                  // 🔹 Cargar la conversación histórica desde el backend
+                  await fetchConversationMessages(conv.id);
                 }}
                 style={[
                   styles.conversationItem,
-                  conv.id === currentConversation!.id && styles.activeConversationItem,
+                  conv.id === currentConversation?.id && styles.activeConversationItem,
                 ]}
               >
                 <Text style={[
                   styles.conversationText,
-                  conv.id === currentConversation!.id && styles.activeConversationText,
+                  conv.id === currentConversation?.id && styles.activeConversationText,
                 ]}>
                   {conv.name}
                 </Text>
@@ -337,7 +415,7 @@ const Chat: React.FC = () => {
           ref={scrollViewRef}
           contentContainerStyle={{ padding: 10 }}
         >
-          {messages[currentConversation!.id].map((msg, i) => {
+          {currentConversation && messages[currentConversation.id]?.map((msg, i) => {
             const isUser = msg.startsWith('Tú:');
             if (isUser) {
               return (
