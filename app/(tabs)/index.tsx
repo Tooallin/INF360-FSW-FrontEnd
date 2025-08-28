@@ -53,7 +53,7 @@ const Chat: React.FC = () => {
 
       // Formatear los mensajes a strings
       const formattedMessages = data.map(msg =>
-        msg.role === "user" ? `Tú: ${msg.content}` : `Memo: ${msg.content}`
+        msg.role === "user" ? ` ${msg.content}` : `Memo: ${msg.content}`
       );
 
       setMessages(prev => ({
@@ -134,42 +134,42 @@ const Chat: React.FC = () => {
     setRecording(null);
   };
 
-  const handleBaseMessage = async (conversationId:number) => {
-    try {
-      setIsTyping(true);
-      const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/message/createbase`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
-      const data = await response.json();
-      const botReply = `Memo: ${data.ai_response}`;
-      // ✅ Guardar el mensaje base para luego usarlo en handleSend
-      setBaseMessage(data.ai_response);
+  // const handleBaseMessage = async (conversationId:number) => {
+  //   try {
+  //     setIsTyping(true);
+  //     const token = await AsyncStorage.getItem("authToken");
+  //     const response = await fetch(`${API_URL}/message/createbase`, {
+  //       method: 'GET',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${token}`
+  //       },
+  //     });
+  //     const data = await response.json();
+  //     const botReply = `Memo: ${data.content}`;
+  //     // ✅ Guardar el mensaje base para luego usarlo en handleSend
+  //     setBaseMessage(data.content);
 
-      setMessages(prev => ({
-        ...prev,
-        [conversationId]: [...prev[conversationId], botReply]
-      }));
-      if (isAudioEnabled) {
-        Speech.speak(data.ai_response); 
-      }
-    } catch (error) {
-      setMessages(prev => ({
-        ...prev,
-        [conversationId]: [...prev[conversationId], 'Ocurrió un error inesperado, intenta más tarde']
-      }));
-      if (isAudioEnabled) {
-        Speech.speak('Ocurrió un error inesperado, intenta más tarde'); 
-      }
-      console.error('Error al enviar mensaje al backend, estoy en handleBaseMessage:', error);
-    } finally {
-      setIsTyping(false);
-    }
-  };
+  //     setMessages(prev => ({
+  //       ...prev,
+  //       [conversationId]: [...prev[conversationId], botReply]
+  //     }));
+  //     if (isAudioEnabled) {
+  //       Speech.speak(data.content); 
+  //     }
+  //   } catch (error) {
+  //     setMessages(prev => ({
+  //       ...prev,
+  //       [conversationId]: [...prev[conversationId], 'Ocurrió un error inesperado, intenta más tarde']
+  //     }));
+  //     if (isAudioEnabled) {
+  //       Speech.speak('Ocurrió un error inesperado, intenta más tarde'); 
+  //     }
+  //     console.error('Error al enviar mensaje al backend, estoy en handleBaseMessage:', error);
+  //   } finally {
+  //     setIsTyping(false);
+  //   }
+  // };
 
   const handleAddConversation = async () => {
     const newConversation = { id: -1, name: "Nueva conversación" };
@@ -191,10 +191,10 @@ const Chat: React.FC = () => {
         },
       });
       const data = await response.json();
-      const botReply = `Memo: ${data.ai_response}`;
+      const botReply = `Memo: ${data.content}`;
 
       // Guardar mensaje base
-      setBaseMessage(data.ai_response);
+      setBaseMessage(data.content);
 
       // Actualizar mensajes
       setMessages(prev => ({
@@ -202,7 +202,7 @@ const Chat: React.FC = () => {
         [newConversation.id]: [botReply]  // Aquí reemplazamos [] con el mensaje de IA
       }));
 
-      if (isAudioEnabled) Speech.speak(data.ai_response);
+      if (isAudioEnabled) Speech.speak(data.content);
     } catch (error) {
       console.error('Error al obtener mensaje inicial:', error);
       setMessages(prev => ({
@@ -221,6 +221,7 @@ const Chat: React.FC = () => {
 
     // Si es local (-1), crearla en el backend
     if (conversationId < 0) {
+      console.log("Entramos en el  if");
       try {
         const token = await AsyncStorage.getItem("authToken");
         const res = await fetch(`${API_URL}/conversation/create`, {
@@ -230,23 +231,24 @@ const Chat: React.FC = () => {
             "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
-            ia_msg_in: baseMessage || "Inicio de conversación",
+            ia_msg_in: baseMessage || "Inicio de conversación", 
           }),
         });
         const data = await res.json();
         conversationId = data.id;
+        console.log(conversationId);
 
         // Actualizar conversación actual con el id real
         setConversations(prev =>
           prev.map(c => c.id === -1 ? { ...c, id: conversationId } : c)
         );
-        setCurrentConversation({ ...currentConversation, id: conversationId, name: `Conversación ${conversationId}` });
         setMessages(prev => {
           const updated = { ...prev };
           updated[conversationId] = updated[-1] || [];
           delete updated[-1];
           return updated;
         });
+        setCurrentConversation(prev => prev ? { ...prev, id: conversationId, name: `Conversación ${conversationId}` } : { id: conversationId, name: `Conversación ${conversationId}` });
       } catch (err) {
         console.error("Error creando conversación:", err);
         return;
@@ -254,11 +256,10 @@ const Chat: React.FC = () => {
     }
 
     // Mensaje del usuario
-    const userMsg = `Tú: ${input.trim()}`;
-    const placeholder = "Memo está escribiendo...";
+    const userMsg = ` ${input.trim()}`;
     setMessages(prev => ({
       ...prev,
-      [conversationId]: [...(prev[conversationId] || []), userMsg, placeholder],
+      [conversationId]: [...(prev[conversationId] || []), userMsg],
     }));
     setInput('');
     setIsTyping(true);
@@ -318,100 +319,94 @@ const Chat: React.FC = () => {
     }
   }, [isTyping]);
 
+  // useEffect(() => {
+  //   const loadBaseMessage = async () => {
+  //     if (!currentConversation) return;
+
+  //     // Solo si no hay mensajes aún
+  //     if (!messages[currentConversation.id] || messages[currentConversation.id].length === 0) {
+  //       setIsTyping(true);
+  //       try {
+  //         const token = await AsyncStorage.getItem("authToken");
+  //         const response = await fetch(`${API_URL}/message/createbase`, {
+  //           method: 'GET',
+  //           headers: {
+  //             'Content-Type': 'application/json',
+  //             'Authorization': `Bearer ${token}`
+  //           },
+  //         });
+  //         const data = await response.json();
+  //         const botReply = `Memo: ${data.ai_response}`;
+
+  //         // Guardar mensaje base para usar en handleSend
+  //         setBaseMessage(data.ai_response);
+
+  //         // Actualizar mensajes
+  //         setMessages(prev => ({
+  //           ...prev,
+  //           [currentConversation.id]: [...(prev[currentConversation.id] || []), botReply]
+  //         }));
+
+  //         if (isAudioEnabled) Speech.speak(data.ai_response);
+
+  //       } catch (error) {
+  //         console.error('Error al obtener mensaje inicial:', error);
+  //         setMessages(prev => ({
+  //           ...prev,
+  //           [currentConversation.id]: [...(prev[currentConversation.id] || []), 'Error obteniendo mensaje inicial']
+  //         }));
+  //       } finally {
+  //         setIsTyping(false);
+  //       }
+  //     }
+  //   };
+
+  //   loadBaseMessage();
+  // }, [currentConversation]);
+
   useEffect(() => {
-    const loadBaseMessage = async () => {
-      if (!currentConversation) return;
+    const fetchConversations = async () => {
+      try {
+        const token = await AsyncStorage.getItem("authToken");
+        const response = await fetch(`${API_URL}/conversation/getall`, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error('Error al obtener chats');
+        const dataFromBackend: {id:number, user_id:number, updated_at:string}[] = await response.json();
 
-      // Solo si no hay mensajes aún
-      if (!messages[currentConversation.id] || messages[currentConversation.id].length === 0) {
-        setIsTyping(true);
-        try {
-          const token = await AsyncStorage.getItem("authToken");
-          const response = await fetch(`${API_URL}/message/createbase`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-          });
-          const data = await response.json();
-          const botReply = `Memo: ${data.ai_response}`;
-
-          // Guardar mensaje base para usar en handleSend
-          setBaseMessage(data.ai_response);
-
-          // Actualizar mensajes
-          setMessages(prev => ({
-            ...prev,
-            [currentConversation.id]: [...(prev[currentConversation.id] || []), botReply]
-          }));
-
-          if (isAudioEnabled) Speech.speak(data.ai_response);
-
-        } catch (error) {
-          console.error('Error al obtener mensaje inicial:', error);
-          setMessages(prev => ({
-            ...prev,
-            [currentConversation.id]: [...(prev[currentConversation.id] || []), 'Error obteniendo mensaje inicial']
-          }));
-        } finally {
-          setIsTyping(false);
+        let chats: Conversation[] = [];
+        if (dataFromBackend && dataFromBackend.length > 0) {
+          chats = dataFromBackend.map(chat => ({ id: chat.id, name: `Conversación ${chat.id}` }));
+        } else {
+          chats = [{ id: -1, name: 'Nueva conversación' }];
         }
+
+        setConversations(chats);
+
+        // Seleccionar el primer chat como activo
+        setCurrentConversation(chats[0]);
+
+        // Inicializar messages para cada chat
+        const initialMessages: MessageMap = {};
+        chats.forEach(chat => { initialMessages[chat.id] = []; });
+        setMessages(initialMessages);
+
+        // 🔹 Cargar mensajes del primer chat automáticamente
+        if (chats[0]?.id) {
+          await fetchConversationMessages(chats[0].id);
+        }
+
+      } catch (error) {
+        console.error('Error al obtener la lista de chats, usando chat por defecto:', error);
+        const defaultChat = [{ id: -1, name: 'Nueva conversación' }];
+        setConversations(defaultChat);
+        setCurrentConversation(defaultChat[0]);
+        setMessages({ 1: [] });
       }
     };
 
-    loadBaseMessage();
-  }, [currentConversation]);
-
-  useEffect(() => {
-  const fetchConversations = async () => {
-    try {
-      const token = await AsyncStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/conversation/getall`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`
-          },
-      });
-      if (!response.ok) throw new Error('Error al obtener chats');
-      const dataFromBackend: {id:number, user_id:number, updated_at:string}[] = await response.json();
-      console.log("Data completa:", dataFromBackend);
-
-      let chats: Conversation[] = [];
-
-      if (dataFromBackend && dataFromBackend.length > 0) {
-        chats = dataFromBackend.map(chat => ({
-          id: chat.id,
-          name: `Conversación ${chat.id}`
-        }));
-      } else {
-        // Fallback: crear chat por defecto como antes
-        chats = [{ id: -1, name: 'Nueva conversación' }];
-      }
-
-      setConversations(chats);
-
-      // Seleccionar el primer chat como activo
-      setCurrentConversation(chats[0]);
-
-      // Inicializar messages para cada chat
-      const initialMessages: MessageMap = {};
-      chats.forEach(chat => {
-        initialMessages[chat.id] = [];
-      });
-      setMessages(initialMessages);
-
-    } catch (error) {
-      console.error('Error al obtener la lista de chats, usando chat por defecto:', error);
-      // Fallback en caso de error
-      const defaultChat = [{ id: -1, name: 'Nueva conversación' }];
-      setConversations(defaultChat);
-      setCurrentConversation(defaultChat[0]);
-      setMessages({ 1: [] });
-    }
-  };
-
-  fetchConversations();
+    fetchConversations();
   }, []);
 
   useEffect(() => {
@@ -494,7 +489,7 @@ const Chat: React.FC = () => {
           contentContainerStyle={{ padding: 10 }}
         >
           {currentConversation && messages[currentConversation.id]?.map((msg, i) => {
-            const isUser = msg.startsWith('Tú:');
+            const isUser = msg.startsWith(' ');
             if (isUser) {
               return (
                 <View key={i} style={styles.userMessage}>
@@ -516,7 +511,7 @@ const Chat: React.FC = () => {
           })}
           {isTyping && (
             <Animated.Text style={[styles.typingIndicator, { opacity: blinkAnim }]}>
-              {/* Memo está escribiendo... */}
+              Memo está escribiendo...
             </Animated.Text>
           )}
         </ScrollView>
