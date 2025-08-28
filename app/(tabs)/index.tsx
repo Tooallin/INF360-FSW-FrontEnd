@@ -113,7 +113,7 @@ const Chat: React.FC = () => {
           name: "recording.m4a",
         } as any);
         const token = await AsyncStorage.getItem("authToken");
-        const response = await fetch(`${API_URL}/message/create`, {
+        const response = await fetch(`${API_URL}/message/transcribe`, {
           method: "POST",
           headers: {
             // 'Content-Type': 'application/json',
@@ -240,7 +240,11 @@ const Chat: React.FC = () => {
 
         // Actualizar conversación actual con el id real
         setConversations(prev =>
-          prev.map(c => c.id === -1 ? { ...c, id: conversationId } : c)
+          [...prev].map(c =>
+            c.id === -1
+              ? { ...c, id: conversationId, name: `Conversación ${conversationId}` }
+              : c
+          )
         );
         setMessages(prev => {
           const updated = { ...prev };
@@ -379,12 +383,11 @@ const Chat: React.FC = () => {
         if (dataFromBackend && dataFromBackend.length > 0) {
           chats = dataFromBackend.map(chat => ({ id: chat.id, name: `Conversación ${chat.id}` }));
         } else {
+          // No hay chats, crear uno local
           chats = [{ id: -1, name: 'Nueva conversación' }];
         }
 
         setConversations(chats);
-
-        // Seleccionar el primer chat como activo
         setCurrentConversation(chats[0]);
 
         // Inicializar messages para cada chat
@@ -392,8 +395,38 @@ const Chat: React.FC = () => {
         chats.forEach(chat => { initialMessages[chat.id] = []; });
         setMessages(initialMessages);
 
-        // 🔹 Cargar mensajes del primer chat automáticamente
-        if (chats[0]?.id) {
+        if (chats[0].id === -1) {
+          // 🔹 Chat local: obtener mensaje inicial de IA
+          setIsTyping(true);
+          try {
+            const response = await fetch(`${API_URL}/message/createbase`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+            });
+            const data = await response.json();
+            const botReply = `Memo: ${data.content}`;
+            setBaseMessage(data.content);
+
+            setMessages(prev => ({
+              ...prev,
+              [-1]: [botReply]
+            }));
+
+            if (isAudioEnabled) Speech.speak(data.content);
+          } catch (error) {
+            console.error('Error al obtener mensaje inicial:', error);
+            setMessages(prev => ({
+              ...prev,
+              [-1]: ['Error obteniendo mensaje inicial']
+            }));
+          } finally {
+            setIsTyping(false);
+          }
+        } else {
+          // 🔹 Chat existente: cargar mensajes del backend
           await fetchConversationMessages(chats[0].id);
         }
 
@@ -402,7 +435,38 @@ const Chat: React.FC = () => {
         const defaultChat = [{ id: -1, name: 'Nueva conversación' }];
         setConversations(defaultChat);
         setCurrentConversation(defaultChat[0]);
-        setMessages({ 1: [] });
+        setMessages(prev => ({ ...prev, [-1]: [] }));
+
+        // 🔹 Intentar obtener mensaje inicial de IA para chat local
+        setIsTyping(true);
+        try {
+          const token = await AsyncStorage.getItem("authToken");
+          const response = await fetch(`${API_URL}/message/createbase`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+          });
+          const data = await response.json();
+          const botReply = `Memo: ${data.content}`;
+          setBaseMessage(data.content);
+
+          setMessages(prev => ({
+            ...prev,
+            [-1]: [botReply]
+          }));
+
+          if (isAudioEnabled) Speech.speak(data.content);
+        } catch (err) {
+          console.error('Error al obtener mensaje inicial en fallback:', err);
+          setMessages(prev => ({
+            ...prev,
+            [-1]: ['Error obteniendo mensaje inicial']
+          }));
+        } finally {
+          setIsTyping(false);
+        }
       }
     };
 
@@ -429,10 +493,16 @@ const Chat: React.FC = () => {
           <ScrollView>
             {conversations.map((conv) => (
               <TouchableOpacity
-                key={conv.id}
+                key={`${conv.id}-${conv.name}`}
                 onPress={async() => {
                   setCurrentConversation(conv);
                   setIsSidebarVisible(false);
+                  // 👇 Actualizar el nombre del chat al seleccionarlo
+                  setConversations(prev =>
+                    prev.map(c =>
+                      c.id === conv.id ? { ...c, name: `Conversación ${conv.id}` } : c
+                    )
+                  );
                   // 🔹 Cargar la conversación histórica desde el backend
                   await fetchConversationMessages(conv.id);
                 }}
@@ -483,7 +553,7 @@ const Chat: React.FC = () => {
         </View>
 
         {/* Messages */}
-        <ScrollView
+        <ScrollView 
           style={styles.messagesBox}
           ref={scrollViewRef}
           contentContainerStyle={{ padding: 10 }}
