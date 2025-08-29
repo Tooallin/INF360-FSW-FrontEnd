@@ -21,10 +21,11 @@ interface MessageMap {
 }
 
 const Chat: React.FC = () => {
-  const API_URL="http://10.147.19.74:8000/api";
+  // const API_URL="http://10.147.19.99:8000/api";
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
   const SPEECH_OPTIONS = {
   language: "es-ES",                      // Idioma
-  pitch: 1.0,                             // Tono (0-2)
+  pitch: 1.3,                             // Tono (0-2)
   rate: 1.0,                              // Velocidad (0.0-1.0+)
   voice: "com.apple.ttsbundle.Monica-compact" // ID de la voz
   };
@@ -200,7 +201,6 @@ const stopRecording = async () => {
 
     // Si es local (-1), crearla en el backend
     if (conversationId < 0) {
-      console.log("Entramos en el  if");
       try {
         const token = await AsyncStorage.getItem("authToken");
         const res = await fetch(`${API_URL}/conversation/create`, {
@@ -215,7 +215,6 @@ const stopRecording = async () => {
         });
         const data = await res.json();
         conversationId = data.id;
-        console.log(conversationId);
 
         // Actualizar conversación actual con el id real
         setConversations(prev =>
