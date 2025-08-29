@@ -20,7 +20,7 @@ const SignIn = () => {
   const router = useRouter();
   const API_URL="http://10.147.19.99:8000/api";
 
-  const onSignInPress = async () => {
+  const onSignUpPress = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Por favor ingresa tu correo y contraseña");
       return;
@@ -51,6 +51,9 @@ const SignIn = () => {
       } else {
         throw new Error("No se recibió el token");
       }
+      console.log("Redirigiendo a SignIn...");
+      router.replace("/(auth)/signIn");
+
     } catch (err: any) {
       Alert.alert("Error", err.message || "Ocurrió un error al iniciar sesión");
     }
