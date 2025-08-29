@@ -7,10 +7,11 @@ import * as Speech from 'expo-speech';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 // import { API_URL } from '@env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import BlobUtil from 'react-native-blob-util';
+import AudioRecord from 'react-native-audio-record';
 
 
-
-// import * as FileSystem from 'expo-file-system'; 
 interface Conversation {
   id: number;
   name: string;
@@ -20,7 +21,7 @@ interface MessageMap {
 }
 
 const Chat: React.FC = () => {
-  const API_URL="http://10.147.19.99:8000/api";
+  const API_URL="http://10.147.19.74:8000/api";
   const SPEECH_OPTIONS = {
   language: "es-ES",                      // Idioma
   pitch: 1.0,                             // Tono (0-2)
@@ -41,6 +42,77 @@ const Chat: React.FC = () => {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
 
+
+  const startRecording = async () => {
+  try {
+    console.log("Iniciando grabación...");
+    const { status } = await Audio.requestPermissionsAsync();
+    if (status !== "granted") {
+      alert("Se necesitan permisos para usar el micrófono");
+      return;
+    }
+
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+    });
+
+    const { recording } = await Audio.Recording.createAsync(
+      Audio.RecordingOptionsPresets.HIGH_QUALITY
+    );
+
+    setRecording(recording);
+    setIsRecording(true);
+    console.log("Grabando...");
+  } catch (err) {
+    console.error("Error al iniciar grabación:", err);
+  }
+};
+
+// 🛑 Detener grabación y enviar al backend
+const stopRecording = async () => {
+  console.log("Deteniendo grabación...");
+  setIsRecording(false);
+
+  if (!recording) return;
+
+  try {
+    await recording.stopAndUnloadAsync();
+    const uri = recording.getURI();
+    console.log("Archivo guardado en:", uri);
+
+    // ✅ Subir al backend
+    const token = await AsyncStorage.getItem("authToken");
+    const formData = new FormData();
+    formData.append("audio", {
+      uri,
+      name: "audio.m4a", // extensión que graba expo-av
+      type: "audio/m4a",
+    } as any);
+
+    const res = await fetch(`${API_URL}/message/transcribe`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // 👀 No pongas Content-Type, RN lo setea solo
+      },
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Error subiendo audio");
+    const data = await res.json();
+    console.log("Respuesta backend:", data.content);
+
+    // 🔄 refrescar mensajes
+    await fetchConversationMessages(currentConversation?.id || -1);
+
+    // Limpiar grabación
+    setRecording(null);
+  } catch (err) {
+    console.error("Error al detener/enviar grabación:", err);
+  }
+};
+
   const fetchConversationMessages = async (conversationId: number) => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -50,7 +122,6 @@ const Chat: React.FC = () => {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
       });
 
@@ -58,7 +129,6 @@ const Chat: React.FC = () => {
 
       const data: { id: number; conversation_id: number; role: string; content: string; created_at: string; }[] = await response.json();
 
-      // Formatear los mensajes a strings
       const formattedMessages = data.map(msg =>
         msg.role === "user" ? ` ${msg.content}` : `Memo: ${msg.content}`
       );
@@ -68,77 +138,16 @@ const Chat: React.FC = () => {
         [conversationId]: formattedMessages,
       }));
 
+      return formattedMessages; // 🔹 Retornar los mensajes formateados
+
     } catch (error) {
       console.error('Error al cargar los mensajes del chat:', error);
       setMessages(prev => ({
         ...prev,
         [conversationId]: ['Ocurrió un error cargando la conversación'],
       }));
+      return [];
     }
-  };
-
-  const startRecording = async () => {
-    try {
-    console.log("Iniciando grabación...");
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        alert('Se necesitan permisos de micrófono');
-        return;
-      }
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
-      await rec.startAsync();
-      setRecording(rec);
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Error iniciando grabación:", err);
-    }
-  };
-
-  const stopRecording = async () => {
-    console.log("Deteniendo grabación...");
-    setIsRecording(false);
-    if (!recording) return;
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    console.log("Archivo guardado en:", uri);
-    // Reproducir la grabación
-    // const { sound } = await Audio.Sound.createAsync({ uri });
-    // await sound.playAsync();
-
-    // 👇 Enviar el audio al backend
-    if (uri) {
-      try {
-        const formData = new FormData();
-        formData.append("file", {
-          uri,
-          type: "audio/m4a",
-          name: "recording.m4a",
-        } as any);
-        const token = await AsyncStorage.getItem("authToken");
-        const response = await fetch(`${API_URL}/message/transcribe`, {
-          method: "POST",
-          headers: {
-            // 'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: formData,
-        });
-        const data = await response.json();
-        const botReply = `Memo: ${data.ai_response || 'No se obtuvo respuesta'}`;
-        setMessages(prev => ({
-          ...prev,
-          [currentConversation!.id]: [...prev[currentConversation!.id], botReply]
-        }));
-      } catch (err) {
-        console.error("Error subiendo audio:", err);
-      }
-    }
-    setRecording(null);
   };
 
   const handleAddConversation = async () => {
@@ -256,10 +265,16 @@ const Chat: React.FC = () => {
       // Traer todos los mensajes actualizados desde el backend
       await fetchConversationMessages(conversationId);
 
-      // Reproducir audio si está activado
+      // Traer todos los mensajes actualizados desde el backend
+      const updatedMessages = await fetchConversationMessages(conversationId);
+
+      // Reproducir el último mensaje del bot
       if (isAudioEnabled) {
-        const lastMessage = messages[conversationId]?.slice(-1)[0]?.replace('Memo: ', '');
-        if (lastMessage) Speech.speak(lastMessage,SPEECH_OPTIONS);
+        const botMessages = updatedMessages.filter(msg => !msg.startsWith(' ')); // solo bot
+        if (botMessages.length > 0) {
+          const lastBotMsg = botMessages[botMessages.length - 1].replace('Memo: ', '');
+          Speech.speak(lastBotMsg, SPEECH_OPTIONS);
+        }
       }
 
     } catch (err) {

@@ -16,7 +16,7 @@ const SignIn = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
-  const API_URL="http://10.147.19.99:8000/api";
+  const API_URL="http://10.147.19.74:8000/api";
   const onSignInPress = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Por favor ingresa tu correo y contraseña");
