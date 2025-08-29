@@ -20,7 +20,14 @@ interface MessageMap {
 }
 
 const Chat: React.FC = () => {
-  const API_URL="http://10.147.19.74:8000/api";
+  const API_URL="http://10.147.19.99:8000/api";
+  const SPEECH_OPTIONS = {
+  language: "es-ES",                      // Idioma
+  pitch: 1.0,                             // Tono (0-2)
+  rate: 1.0,                              // Velocidad (0.0-1.0+)
+  voice: "com.apple.ttsbundle.Monica-compact" // ID de la voz
+  };
+  const [useFlag,setuseFlag]=useState(false);
   const [baseMessage, setBaseMessage] = useState<string | null>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [blinkAnim] = useState(new Animated.Value(1));
@@ -134,43 +141,6 @@ const Chat: React.FC = () => {
     setRecording(null);
   };
 
-  // const handleBaseMessage = async (conversationId:number) => {
-  //   try {
-  //     setIsTyping(true);
-  //     const token = await AsyncStorage.getItem("authToken");
-  //     const response = await fetch(`${API_URL}/message/createbase`, {
-  //       method: 'GET',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //         'Authorization': `Bearer ${token}`
-  //       },
-  //     });
-  //     const data = await response.json();
-  //     const botReply = `Memo: ${data.content}`;
-  //     // ✅ Guardar el mensaje base para luego usarlo en handleSend
-  //     setBaseMessage(data.content);
-
-  //     setMessages(prev => ({
-  //       ...prev,
-  //       [conversationId]: [...prev[conversationId], botReply]
-  //     }));
-  //     if (isAudioEnabled) {
-  //       Speech.speak(data.content); 
-  //     }
-  //   } catch (error) {
-  //     setMessages(prev => ({
-  //       ...prev,
-  //       [conversationId]: [...prev[conversationId], 'Ocurrió un error inesperado, intenta más tarde']
-  //     }));
-  //     if (isAudioEnabled) {
-  //       Speech.speak('Ocurrió un error inesperado, intenta más tarde'); 
-  //     }
-  //     console.error('Error al enviar mensaje al backend, estoy en handleBaseMessage:', error);
-  //   } finally {
-  //     setIsTyping(false);
-  //   }
-  // };
-
   const handleAddConversation = async () => {
     const newConversation = { id: -1, name: "Nueva conversación" };
 
@@ -178,7 +148,7 @@ const Chat: React.FC = () => {
     // Inicializar el array vacío para este chat
     setMessages(prev => ({ ...prev, [newConversation.id]: [] }));
     setCurrentConversation(newConversation);
-
+    setIsSidebarVisible(false);
     // Esperar la respuesta de la IA antes de mostrar
     try {
       setIsTyping(true);
@@ -202,7 +172,7 @@ const Chat: React.FC = () => {
         [newConversation.id]: [botReply]  // Aquí reemplazamos [] con el mensaje de IA
       }));
 
-      if (isAudioEnabled) Speech.speak(data.content);
+      if (isAudioEnabled) Speech.speak(data.content,SPEECH_OPTIONS);
     } catch (error) {
       console.error('Error al obtener mensaje inicial:', error);
       setMessages(prev => ({
@@ -289,7 +259,7 @@ const Chat: React.FC = () => {
       // Reproducir audio si está activado
       if (isAudioEnabled) {
         const lastMessage = messages[conversationId]?.slice(-1)[0]?.replace('Memo: ', '');
-        if (lastMessage) Speech.speak(lastMessage);
+        if (lastMessage) Speech.speak(lastMessage,SPEECH_OPTIONS);
       }
 
     } catch (err) {
@@ -300,8 +270,12 @@ const Chat: React.FC = () => {
       }));
     } finally {
       setIsTyping(false);
+      setuseFlag(false);
     }
   };
+
+
+
   useEffect(() => {
     if (isTyping) {
       Animated.loop(
@@ -322,51 +296,6 @@ const Chat: React.FC = () => {
       blinkAnim.setValue(1); 
     }
   }, [isTyping]);
-
-  // useEffect(() => {
-  //   const loadBaseMessage = async () => {
-  //     if (!currentConversation) return;
-
-  //     // Solo si no hay mensajes aún
-  //     if (!messages[currentConversation.id] || messages[currentConversation.id].length === 0) {
-  //       setIsTyping(true);
-  //       try {
-  //         const token = await AsyncStorage.getItem("authToken");
-  //         const response = await fetch(`${API_URL}/message/createbase`, {
-  //           method: 'GET',
-  //           headers: {
-  //             'Content-Type': 'application/json',
-  //             'Authorization': `Bearer ${token}`
-  //           },
-  //         });
-  //         const data = await response.json();
-  //         const botReply = `Memo: ${data.ai_response}`;
-
-  //         // Guardar mensaje base para usar en handleSend
-  //         setBaseMessage(data.ai_response);
-
-  //         // Actualizar mensajes
-  //         setMessages(prev => ({
-  //           ...prev,
-  //           [currentConversation.id]: [...(prev[currentConversation.id] || []), botReply]
-  //         }));
-
-  //         if (isAudioEnabled) Speech.speak(data.ai_response);
-
-  //       } catch (error) {
-  //         console.error('Error al obtener mensaje inicial:', error);
-  //         setMessages(prev => ({
-  //           ...prev,
-  //           [currentConversation.id]: [...(prev[currentConversation.id] || []), 'Error obteniendo mensaje inicial']
-  //         }));
-  //       } finally {
-  //         setIsTyping(false);
-  //       }
-  //     }
-  //   };
-
-  //   loadBaseMessage();
-  // }, [currentConversation]);
 
   useEffect(() => {
     const fetchConversations = async () => {
@@ -415,7 +344,7 @@ const Chat: React.FC = () => {
               [-1]: [botReply]
             }));
 
-            if (isAudioEnabled) Speech.speak(data.content);
+            if (isAudioEnabled) Speech.speak(data.content,SPEECH_OPTIONS);
           } catch (error) {
             console.error('Error al obtener mensaje inicial:', error);
             setMessages(prev => ({
@@ -457,7 +386,7 @@ const Chat: React.FC = () => {
             [-1]: [botReply]
           }));
 
-          if (isAudioEnabled) Speech.speak(data.content);
+          if (isAudioEnabled) Speech.speak(data.content,SPEECH_OPTIONS);
         } catch (err) {
           console.error('Error al obtener mensaje inicial en fallback:', err);
           setMessages(prev => ({
@@ -476,6 +405,12 @@ const Chat: React.FC = () => {
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages, currentConversation]);
+  
+  useEffect(() => {
+    if(currentConversation?.id==-1){
+      setuseFlag(true);
+    }
+  }, [currentConversation]);
 
   return (
     <KeyboardAvoidingView
@@ -487,7 +422,11 @@ const Chat: React.FC = () => {
       {/* Sidebar */}
       {isSidebarVisible && (
         <View style={styles.sidebar}>
-          <TouchableOpacity onPress={handleAddConversation} style={styles.addChatButton}>
+          <TouchableOpacity 
+            onPress={handleAddConversation} 
+            style={[styles.addChatButton, useFlag && styles.block]}
+            disabled={useFlag}
+          >
             <Text style={styles.addChatText}>✚ Nuevo chat</Text>
           </TouchableOpacity>
           <ScrollView>
@@ -497,14 +436,18 @@ const Chat: React.FC = () => {
                 onPress={async() => {
                   setCurrentConversation(conv);
                   setIsSidebarVisible(false);
-                  // 👇 Actualizar el nombre del chat al seleccionarlo
-                  setConversations(prev =>
-                    prev.map(c =>
-                      c.id === conv.id ? { ...c, name: `Conversación ${conv.id}` } : c
-                    )
-                  );
-                  // 🔹 Cargar la conversación histórica desde el backend
-                  await fetchConversationMessages(conv.id);
+                  // Actualizar el nombre del chat al seleccionarlo
+                  if (conv.id !== -1) {
+                    // 🔹 Solo cambiar nombre si no es el chat local
+                    setConversations(prev =>
+                      prev.map(c =>
+                        c.id === conv.id ? { ...c, name: `Conversación ${conv.id}` } : c
+                      )
+                    );
+
+                    //Solo cargar mensajes desde backend si no es el chat local
+                    await fetchConversationMessages(conv.id);
+                  }
                 }}
                 style={[
                   styles.conversationItem,
@@ -597,12 +540,12 @@ const Chat: React.FC = () => {
             returnKeyType="send"
           />
           <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: isRecording ? 'red' : '#6e46dd' }]}
+            style={[styles.sendButton, { marginLeft:3,backgroundColor: isRecording ? 'red' : '#6e46dd' }]}
             onPress={isRecording ? stopRecording : startRecording}
           >
             <Icon name="microphone" size={30} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.sendButton,{marginLeft:3}]} onPress={handleSend}>
+          <TouchableOpacity style={[styles.sendButton,{marginLeft:2}]} onPress={handleSend}>
             <Text style={[styles.sendButtonText, { marginTop: -5 }]}>➤</Text>
           </TouchableOpacity>
         </View>
@@ -623,7 +566,10 @@ const styles = StyleSheet.create({
     borderRightColor: '#ccc',
     
   },
-
+  block: {
+    opacity: 0.3,
+    borderWidth: 0,
+  },
   addChatButton: {
     backgroundColor: 'white',
     borderColor: '#5d8edb',
@@ -637,7 +583,6 @@ const styles = StyleSheet.create({
     color: '#4F5C6C',
     fontWeight: '600',
   },
-
   conversationItem: {
     padding: 10,
     marginVertical: 5,
