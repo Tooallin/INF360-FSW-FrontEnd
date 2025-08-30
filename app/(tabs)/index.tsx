@@ -1,15 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, Animated , KeyboardAvoidingView, Platform
-} from 'react-native';
-import { Audio } from 'expo-av'; 
+import { Audio } from 'expo-av';
 import * as Speech from 'expo-speech';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Image,
+  KeyboardAvoidingView, Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput, TouchableOpacity,
+  View
+} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 // import { API_URL } from '@env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
-import BlobUtil from 'react-native-blob-util';
-import AudioRecord from 'react-native-audio-record';
 
 
 interface Conversation {
@@ -19,6 +23,7 @@ interface Conversation {
 interface MessageMap {
   [conversationId: number]: string[];
 }
+
 
 const Chat: React.FC = () => {
   // const API_URL="http://10.147.19.99:8000/api";
@@ -42,7 +47,34 @@ const Chat: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [speakingKey, setSpeakingKey] = useState<string | null>(null);
 
+  // Quita el prefijo "Memo: " y el espacio inicial de mensajes de usuario
+  const cleanMsg = (raw: string) => {
+    return raw.startsWith(' ') ? raw.trim() : raw.replace(/^Memo:\s*/,'');
+  };
+
+  const speakText = (key: string, raw: string) => {
+    // Si ya está sonando este mismo, lo detenemos
+    if (speakingKey === key) {
+      Speech.stop();
+      setSpeakingKey(null);
+      return;
+    }
+
+    const text = cleanMsg(raw);
+
+    // Paramos cualquier lectura previa
+    Speech.stop();
+    setSpeakingKey(key);
+
+    Speech.speak(text, {
+      ...SPEECH_OPTIONS,
+      onDone: () => setSpeakingKey(null),
+      onStopped: () => setSpeakingKey(null),
+      onError: () => setSpeakingKey(null),
+    });
+  };
 
   const startRecording = async () => {
   try {
@@ -517,21 +549,62 @@ const stopRecording = async () => {
         >
           {currentConversation && messages[currentConversation.id]?.map((msg, i) => {
             const isUser = msg.startsWith(' ');
+            const key = `${currentConversation.id}-${i}`;
+            const cleaned = cleanMsg(msg);
+            const isPlaying = speakingKey === key;
+
             if (isUser) {
               return (
-                <View key={i} style={styles.userMessage}>
-                  <Text style={styles.userMessageText}>{msg}</Text>
+                <View key={key} style={styles.userMessageBlock}>
+                  <View style={styles.userMessage}>
+                    <Text style={styles.userMessageText}>{msg}</Text>
+                  </View>
+
+                  {/* Botón de audio para este mensaje del usuario */}
+                  <View style={styles.audioControlsRight}>
+                    <TouchableOpacity
+                      style={[styles.audioBtn, isPlaying && styles.audioBtnActive]}
+                      onPress={() => speakText(key, msg)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Icon
+                        name={isPlaying ? "stop-circle" : "volume-high"}
+                        size={18}
+                        color="#fff"
+                      />
+                      <Text style={styles.audioBtnText}>{isPlaying ? 'Detener' : 'Escuchar'}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               );
             }
+
             return (
-              <View key={i} style={styles.botMessageWithAvatar}>
-                <Image
-                  source={require('../../assets/images/logoBot.png')}
-                  style={styles.botAvatar}
-                />
-                <View style={styles.botMessageBubble}>
-                  <Text style={styles.botMessageText}>{msg.replace('Memo: ', '')}</Text>
+              <View key={key} style={styles.botMessageBlock}>
+                <View style={styles.botMessageWithAvatar}>
+                  <Image
+                    source={require('../../assets/images/logoBot.png')}
+                    style={styles.botAvatar}
+                  />
+                  <View style={styles.botMessageBubble}>
+                    <Text style={styles.botMessageText}>{cleaned}</Text>
+                  </View>
+                </View>
+
+                {/* Botón de audio para este mensaje del bot */}
+                <View style={styles.audioControlsLeft}>
+                  <TouchableOpacity
+                    style={[styles.audioBtn, isPlaying && styles.audioBtnActive]}
+                    onPress={() => speakText(key, msg)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      name={isPlaying ? "stop-circle" : "volume-high"}
+                      size={18}
+                      color="#fff"
+                    />
+                    <Text style={styles.audioBtnText}>{isPlaying ? 'Detener' : 'Escuchar'}</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             );
@@ -744,6 +817,44 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 28,
   },
+
+  audioControlsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    marginBottom: 6,
+    marginLeft: 41, // 36 avatar + 5 separación
+  },
+
+  audioControlsRight: {
+    flexDirection: 'row',
+    alignSelf: 'flex-end',
+    marginTop: 2,
+    marginBottom: 6,
+  },
+
+  audioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#6e46dd',
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+
+  audioBtnActive: {
+    backgroundColor: '#d53f8c',
+  },
+
+  audioBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  
+  botMessageBlock: { marginVertical: 2 },
+  userMessageBlock: { marginVertical: 2 },
 });
 
 export default Chat;
