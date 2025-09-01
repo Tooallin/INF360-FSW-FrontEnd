@@ -44,10 +44,18 @@ const Chat: React.FC = () => {
   const [input, setInput] = useState('');
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [speakingKey, setSpeakingKey] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ visible: boolean; text: string }>({ visible: false, text: '' });
+
+  const showToast = (text: string, duration = 2200) => {
+    setToast({ visible: true, text });
+    // Auto-ocultar
+    setTimeout(() => setToast({ visible: false, text: '' }), duration);
+  };
 
   // Quita el prefijo "Memo: " y el espacio inicial de mensajes de usuario
   const cleanMsg = (raw: string) => {
@@ -104,46 +112,69 @@ const Chat: React.FC = () => {
 
 // 🛑 Detener grabación y enviar al backend
 const stopRecording = async () => {
-  console.log("Deteniendo grabación...");
-  setIsRecording(false);
+	console.log("Deteniendo grabación...");
+	setIsRecording(false);
 
-  if (!recording) return;
+	if (!recording) return;
 
-  try {
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    console.log("Archivo guardado en:", uri);
+	try {
+		await recording.stopAndUnloadAsync();
+		const uri = recording.getURI();
+		console.log("Archivo guardado en:", uri);
 
-    // ✅ Subir al backend
-    const token = await AsyncStorage.getItem("authToken");
-    const formData = new FormData();
-    formData.append("audio", {
-      uri,
-      name: "audio.m4a", // extensión que graba expo-av
-      type: "audio/m4a",
-    } as any);
+		// ✅ Subir al backend
+		const token = await AsyncStorage.getItem("authToken");
+		const formData = new FormData();
+		formData.append("audio", {
+			uri,
+			name: "audio.m4a",
+			type: "audio/m4a",
+		} as any);
 
-    const res = await fetch(`${API_URL}/message/transcribe`, {
+		const res = await fetch(`${API_URL}/message/transcribe`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        // 👀 No pongas Content-Type, RN lo setea solo
+        // No pongas Content-Type, RN lo setea solo
       },
       body: formData,
     });
 
-    if (!res.ok) throw new Error("Error subiendo audio");
+    if (!res.ok) {
+      // Intentar leer detalle del backend
+      let detail = "No se pudo procesar el audio";
+      try {
+        const errJson = await res.json();
+        detail = errJson?.detail || detail;
+      } catch {}
+
+      // 422 en tu backend = audio no entendido (sr.UnknownValueError)
+      if (res.status === 422) {
+        showToast("No se ha entendido el audio, porfavor intentalo de nuevo.");
+      } else {
+        showToast(`Error: ${detail}`);
+      }
+
+      setRecording(null);
+      return; // salimos para no continuar el flujo “feliz”
+    }
+
     const data = await res.json();
     console.log("Respuesta backend:", data.content);
 
-    // 🔄 refrescar mensajes
+    // Pegar la transcripción en el input y enfocar
+    setInput(data?.content ?? "");
+    inputRef.current?.focus();
+
+    // Refrescar mensajes si corresponde
     await fetchConversationMessages(currentConversation?.id || -1);
 
     // Limpiar grabación
     setRecording(null);
-  } catch (err) {
-    console.error("Error al detener/enviar grabación:", err);
-  }
+	} catch (err) {
+		console.error("Error al detener/enviar grabación:", err);
+	  showToast("Hubo un problema con tu conexión. Intenta de nuevo.");
+	}
 };
 
   const fetchConversationMessages = async (conversationId: number) => {
@@ -619,6 +650,7 @@ const stopRecording = async () => {
         {/* Input bar */}
         <View style={styles.inputBar}>
           <TextInput
+            ref={inputRef}
             style={styles.chatInput}
             placeholder="Escribe un mensaje ..."
             value={input}
@@ -638,6 +670,11 @@ const stopRecording = async () => {
         </View>
       </View>
     </View>
+    {toast.visible && (
+      <View style={styles.toast}>
+        <Text style={styles.toastText}>{toast.text}</Text>
+      </View>
+    )}
     </KeyboardAvoidingView>
   );
 };
@@ -855,6 +892,31 @@ const styles = StyleSheet.create({
   
   botMessageBlock: { marginVertical: 2 },
   userMessageBlock: { marginVertical: 2 },
+
+  toast: {
+    position: 'absolute',
+    top: '45%',                  
+    left: 40,
+    right: 40,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(110, 70, 221, 0.9)', // 👈 violeta semi-transparente
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,                 
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    zIndex: 9999,
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 18,    
+    fontWeight: '700',
+    textAlign: 'center',
+  },
 });
 
 export default Chat;
