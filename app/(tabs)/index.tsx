@@ -13,6 +13,7 @@ import {
   View
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { LinearGradient } from "expo-linear-gradient";
 
 interface Conversation {
 	id: number;
@@ -562,9 +563,14 @@ const Chat: React.FC = () => {
 			<View style={styles.container}>
 				{/* Sidebar */}
 				{isSidebarVisible && (
-					<View style={styles.sidebar}>
-						<TouchableOpacity
-							onPress={handleAddConversation}
+						<LinearGradient
+							colors={['#a98dff', '#bfd7ff']} // degradado morado → azul
+							start={{ x: 0, y: 0 }} // parte superior
+							end={{ x: 0, y: 1 }}   // parte inferior
+							style={styles.sidebar}
+						>      
+						<TouchableOpacity 
+							onPress={handleAddConversation} 
 							style={[styles.addChatButton, useFlag && styles.block]}
 							disabled={useFlag}
 						>
@@ -598,39 +604,45 @@ const Chat: React.FC = () => {
 								</TouchableOpacity>
 							))}
 						</ScrollView>
-					</View>
+					</LinearGradient>
 				)}
 
-				<View style={styles.chatContainer}>
+				<View style={{flex:1}}>
 					{/* Navbar */}
 					<View style={styles.navbar}>
-						<TouchableOpacity
-							style={styles.hamburgerBtn}
-							onPress={() => setIsSidebarVisible(!isSidebarVisible)}
-							accessibilityLabel="Toggle menu"
+						<LinearGradient
+							colors={["#7b62ff", "#99cdff"]} // morado → azul
+							start={{ x: 0, y: 0 }}
+							end={{ x: 1, y: 0 }}
+							style={styles.navbarGradient}
 						>
-							<Text style={styles.hamburgerIcon}>☰</Text>
-						</TouchableOpacity>
-						<View style={styles.navbarLogoTitle}>
-							<Image
-								source={require('../../assets/images/logoRemember.png')}
-								style={styles.navbarLogo}
-							/>
-							<Text style={styles.title}>RememberMe</Text>
-						</View>
-						<TouchableOpacity
-							style={{ marginLeft: 'auto' }}
-							onPress={() => setIsAudioEnabled(!isAudioEnabled)}
-						>
-							<Icon
-								name={isAudioEnabled ? "volume-high" : "volume-off"}
-								size={28}
-								color="#000"
-							/>
-						</TouchableOpacity>
+							<TouchableOpacity
+								style={styles.hamburgerBtn}
+								onPress={() => setIsSidebarVisible(!isSidebarVisible)}
+								accessibilityLabel="Toggle menu"
+							>
+								<Text style={styles.hamburgerIcon}>☰</Text>
+							</TouchableOpacity>
+							<View style={styles.navbarLogoTitle}>
+								<Image
+									source={require('../../assets/images/Logo color.svg')}
+									style={styles.navbarTextImage}
+								/>
+							</View>
+							<TouchableOpacity
+							style={{ marginLeft: "auto" }}
+							>
+							</TouchableOpacity>
+						</LinearGradient>
 					</View>
 
 					{/* Messages */}
+						<LinearGradient
+						colors={['#ffffffff', '#dae7ffff']} // degradado vertical
+						start={{ x: 0, y: 0 }}
+						end={{ x: 0, y: 1 }}
+						style={{ flex: 1, paddingHorizontal: 10, paddingBottom: 10 }}
+						>
 					<ScrollView
 						style={styles.messagesBox}
 						ref={scrollViewRef}
@@ -706,27 +718,47 @@ const Chat: React.FC = () => {
 						/>
 
 						{isWeb ? (
-							// Sólo grabación en web (NO adjuntar)
 							<TouchableOpacity
-								style={[styles.sendButton, { marginLeft: 3, backgroundColor: isWebRec ? 'red' : '#6e46dd' }]}
-								onPress={isWebRec ? stopWebRecording : startWebRecording}
+							onPress={isWebRec ? stopWebRecording : startWebRecording}
+							style={{ borderRadius: 50, overflow: "hidden", marginLeft: 3 }}
+							>
+							<LinearGradient
+								colors={isWebRec ? ["#ff4d4d", "#ff1a1a"] : ["#7b62ff", "#99cdff"]}
+								start={{ x: 0, y: 0 }}
+								end={{ x: 1, y: 1 }}
+								style={[styles.sendButton, { justifyContent: "center", alignItems: "center" }]}
 							>
 								<Icon name="microphone" size={24} color="#fff" />
+							</LinearGradient>
 							</TouchableOpacity>
 						) : (
 							// Móvil: micrófono expo-av
 							<TouchableOpacity
-								style={[styles.sendButton, { marginLeft: 3, backgroundColor: isRecording ? 'red' : '#6e46dd' }]}
-								onPress={isRecording ? stopRecording : startRecording}
+							onPress={isRecording ? stopRecording : startRecording}
+							style={{ borderRadius: 50, overflow: "hidden", marginLeft: 3 }}
+							>
+							<LinearGradient
+								colors={isRecording ? ["#ff4d4d", "#ff1a1a"] : ["#7b62ff", "#99cdff"]}
+								start={{ x: 0, y: 0 }}
+								end={{ x: 1, y: 1 }}
+								style={[styles.sendButton, { justifyContent: "center", alignItems: "center" }]}
 							>
 								<Icon name="microphone" size={30} color="#fff" />
+							</LinearGradient>
 							</TouchableOpacity>
 						)}
-
-						<TouchableOpacity style={[styles.sendButton, { marginLeft: 2 }]} onPress={handleSend}>
-							<Text style={[styles.sendButtonText, { marginTop: -5 }]}>➤</Text>
-						</TouchableOpacity>
+							<TouchableOpacity onPress={handleSend}>
+								<LinearGradient
+								colors={["#7b62ff", "#99cdff"]}
+								start={{ x: 0, y: 0 }}
+								end={{ x: 1, y: 1 }}
+								style={[styles.sendButton, { marginLeft: 2 }]}
+								>
+								<Text style={[styles.sendButtonText, { marginTop: -5 }]}>➤</Text>
+								</LinearGradient>
+							</TouchableOpacity>
 					</View>
+				</LinearGradient>
 				</View>
 			</View>
 
@@ -740,8 +772,9 @@ const Chat: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-	container: { flex: 1, flexDirection: 'row', backgroundColor: '#dff1f8' },
-
+	container: { flex: 1, 
+		flexDirection: 'row'
+	},
 	sidebar: {
 		width: 220,
 		backgroundColor: '#aec4df',
@@ -785,25 +818,23 @@ const styles = StyleSheet.create({
 	},
 	chatContainer: {
 		flex: 1,
-		padding: 20,
-		backgroundColor: '#dff1f8',
 	},
 	navbar: {
-		height: 60,
 		flexDirection: 'row',
 		alignItems: 'center',
-		backgroundColor: '#fff',
-		marginBottom: 10,
-		paddingHorizontal: 10,
-		elevation: 2,
+		elevation: 0,
+	},
+	navbarGradient: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
 	},
 	hamburgerBtn: {
 		padding: 10,
 	},
 	hamburgerIcon: {
 		fontSize: 24,
-		color: '#000000ff',
-		marginLeft: -10,
+		color: '#ffffffff',
 	},
 	navbarLogoTitle: {
 		flexDirection: 'row',
@@ -811,10 +842,10 @@ const styles = StyleSheet.create({
 		marginRight: 'auto',
 		marginLeft: 'auto',
 	},
-	navbarLogo: {
-		width: 30,
-		height: 30,
-		marginRight: 10,
+	navbarTextImage: {
+    width: 190,
+    height: 50,
+    resizeMode: 'contain',
 	},
 	title: {
 		fontSize: 24,
@@ -823,14 +854,10 @@ const styles = StyleSheet.create({
 	},
 	messagesBox: {
 		flex: 1,
-		backgroundColor: '#fff',
-		borderRadius: 8,
-		borderWidth: 2,
-		borderColor: '#accfeb',
 	},
 	userMessage: {
 		alignSelf: 'flex-end',
-		backgroundColor: '#c59af6',
+		backgroundColor: '#935DF7',
 		borderTopRightRadius: 0,
 		borderRadius: 15,
 		padding: 10,
@@ -838,24 +865,25 @@ const styles = StyleSheet.create({
 		maxWidth: '70%',
 	},
 	userMessageText: {
-		color: '#000',
+		color: '#ffffffff',
 		fontSize: 14,
 	},
 	botMessageWithAvatar: {
 		flexDirection: 'row',
 		alignItems: 'flex-start',
-		marginVertical: 5,
+		marginVertical: 3,
 	},
 	botAvatar: {
 		width: 36,
 		height: 36,
 		borderRadius: 18,
-		borderWidth: 2,
+		borderWidth: 2,	
 		borderColor: '#6e46dd',
-		marginRight: 5,
+		marginRight: 4,
+		marginLeft:-10,
 	},
 	botMessageBubble: {
-		backgroundColor: '#EAF0F4',
+		backgroundColor: '#ebd7ffff',
 		borderRadius: 15,
 		borderTopLeftRadius: 0,
 		padding: 10,
@@ -874,11 +902,11 @@ const styles = StyleSheet.create({
 	inputBar: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		padding: 5,
-		backgroundColor: '#fff',
+		padding: 4,
+		backgroundColor: '#ffffffff',
 		borderRadius: 12,
 		borderWidth: 2,
-		borderColor: '#accfeb',
+		borderColor: '#ffffffff',
 		marginTop: 10,
 	},
 	chatInput: {
