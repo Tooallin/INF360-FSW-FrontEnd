@@ -1,23 +1,26 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter} from "expo-router";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+    Alert,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+// import { API_URL } from '@env';
+
 
 const SignIn = () => {
-  // const API_URL="http://10.147.19.99:8000/api";
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
-  console.log(API_URL);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const router = useRouter();
-  const onSignInPress = async () => {
+  const API_URL="http://10.147.19.99:8000/api";
+
+  const onSignUpPress = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Por favor ingresa tu correo y contraseña");
       return;
@@ -25,12 +28,12 @@ const SignIn = () => {
     console.log("APIIII: ",API_URL);
     console.log("Enviando datos..."); // 🔹 Aquí se imprime al presionar el botón
     try {
-      const response = await fetch(`${API_URL}/users/login`, {
+      const response = await fetch(`${API_URL}/users/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, email, password }),
       });
 
       if (!response.ok) {
@@ -48,6 +51,9 @@ const SignIn = () => {
       } else {
         throw new Error("No se recibió el token");
       }
+      console.log("Redirigiendo a SignIn...");
+      router.push("/(auth)/signIn");
+
     } catch (err: any) {
       Alert.alert("Error", err.message || "Ocurrió un error al iniciar sesión");
     }
@@ -55,28 +61,40 @@ const SignIn = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Inicia Sesión</Text>
+        <Text style={styles.title}>Inicia Sesión</Text>
 
-      <TextInput
+        <TextInput
+        style={styles.input}
+        placeholder="Nombre"
+        value={name}
+        onChangeText={setName}
+        />
+
+        <TextInput
         style={styles.input}
         placeholder="Correo electrónico"
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
         onChangeText={setEmail}
-      />
+        />
 
-      <TextInput
+        <TextInput
         style={styles.input}
         placeholder="Contraseña"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
-      />
+        autoCapitalize="none"
+        />
 
-      <TouchableOpacity style={styles.button} onPress={onSignInPress}>
+        <TouchableOpacity style={styles.button} onPress={onSignUpPress}>
         <Text style={styles.buttonText}>Ingresar</Text>
-      </TouchableOpacity>
+        </TouchableOpacity>
+
+        <Text onPress={() => router.push("/(auth)/signIn")} style={{ marginTop: 20, color: "#6e46dd", textAlign: "center" }}>
+            ¿Ya tienes una cuenta?
+        </Text>
     </View>
   );
 };
