@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from "expo-linear-gradient";
+import Constants from "expo-constants";
 
 interface Conversation {
 	id: number;
@@ -24,7 +25,7 @@ interface MessageMap {
 }
 
 const Chat: React.FC = () => {
-	const API_URL = process.env.EXPO_PUBLIC_API_URL;
+	const API_URL = Constants.expoConfig.extra.API_URL;
 	const SPEECH_OPTIONS = {
 		language: "es-ES",
 		pitch: 1.3,

@@ -9,10 +9,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Constants from "expo-constants";
 
 const SignIn = () => {
   // const API_URL="http://10.147.19.99:8000/api";
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  const API_URL = Constants.expoConfig.extra.API_URL;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();

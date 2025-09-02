@@ -9,6 +9,7 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import Constants from "expo-constants";
 
 const SignIn = () => {
 	const [name, setName] = useState("");
@@ -20,7 +21,7 @@ const SignIn = () => {
 	const [serverMsg, setServerMsg] = useState<string | null>(null);
 
 	const router = useRouter();
-	const API_URL = process.env.EXPO_PUBLIC_API_URL;
+	const API_URL = Constants.expoConfig.extra.API_URL;
 
 	const onSignUpPress = async () => {
 		if (!name || !surname) {
