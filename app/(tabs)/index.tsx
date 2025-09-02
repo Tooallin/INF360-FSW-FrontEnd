@@ -138,7 +138,9 @@ const Chat: React.FC = () => {
 			const data = await res.json();
 			setInput(data?.content ?? "");
 			inputRef.current?.focus();
-			await fetchConversationMessages(currentConversation?.id || -1);
+			if (currentConversation?.id && currentConversation.id > 0) {
+				await fetchConversationMessages(currentConversation.id);
+			}
 		} catch (err) {
 			console.error("Error subiendo audio (web):", err);
 			showToast("Hubo un problema con tu conexión. Intenta de nuevo.");
@@ -282,7 +284,9 @@ const Chat: React.FC = () => {
 			const data = await res.json();
 			setInput(data?.content ?? "");
 			inputRef.current?.focus();
-			await fetchConversationMessages(currentConversation?.id || -1);
+			if (currentConversation?.id && currentConversation.id > 0) {
+				await fetchConversationMessages(currentConversation.id);
+			}
 			setRecording(null);
 		} catch (err) {
 			console.error("Error al detener/enviar grabación:", err);
@@ -295,6 +299,9 @@ const Chat: React.FC = () => {
 	 * =========================== */
 	const fetchConversationMessages = async (conversationId: number) => {
 		try {
+			// ⛔ no consultes al backend por conversaciones temporales
+			if (!conversationId || conversationId < 0) return messages[conversationId] || [];
+
 			const token = await AsyncStorage.getItem("authToken");
 			if (!token) throw new Error("No se encontró token, redirigir al login");
 
@@ -305,16 +312,14 @@ const Chat: React.FC = () => {
 			if (!response.ok) throw new Error("Error al cargar los mensajes del chat");
 
 			const data: { id: number; conversation_id: number; role: string; content: string; created_at: string; }[] = await response.json();
-			const formattedMessages = data.map(msg =>
-				msg.role === "user" ? ` ${msg.content}` : `Memo: ${msg.content}`
-			);
+			const formatted = data.map(msg => (msg.role === "user" ? ` ${msg.content}` : `Memo: ${msg.content}`));
 
-			setMessages(prev => ({ ...prev, [conversationId]: formattedMessages }));
-			return formattedMessages;
+			setMessages(prev => ({ ...prev, [conversationId]: formatted }));
+			return formatted;
 		} catch (error) {
 			console.error('Error al cargar los mensajes del chat:', error);
 			setMessages(prev => ({ ...prev, [conversationId]: ['Ocurrió un error cargando la conversación'] }));
-		 return [];
+			return [];
 		}
 	};
 
