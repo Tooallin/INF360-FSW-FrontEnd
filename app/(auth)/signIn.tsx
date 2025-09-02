@@ -1,25 +1,23 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import React, { useState } from "react";
 import {
-  Alert,
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  StyleSheet,
+  Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter} from "expo-router";
 // import { API_URL } from '@env';
 
+
 const SignIn = () => {
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const router = useRouter();
   const API_URL="http://10.147.19.99:8000/api";
-
-  const onSignUpPress = async () => {
+  const onSignInPress = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Por favor ingresa tu correo y contraseña");
       return;
@@ -27,12 +25,12 @@ const SignIn = () => {
     console.log("APIIII: ",API_URL);
     console.log("Enviando datos..."); // 🔹 Aquí se imprime al presionar el botón
     try {
-      const response = await fetch(`${API_URL}/users/create`, {
+      const response = await fetch(`${API_URL}/users/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {
@@ -50,9 +48,6 @@ const SignIn = () => {
       } else {
         throw new Error("No se recibió el token");
       }
-      console.log("Redirigiendo a SignIn...");
-      router.replace("/(auth)/signIn");
-
     } catch (err: any) {
       Alert.alert("Error", err.message || "Ocurrió un error al iniciar sesión");
     }
@@ -61,13 +56,6 @@ const SignIn = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Inicia Sesión</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Nombre"
-        value={name}
-        onChangeText={setName}
-      />
 
       <TextInput
         style={styles.input}
