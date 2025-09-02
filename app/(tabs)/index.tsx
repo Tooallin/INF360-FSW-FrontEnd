@@ -117,7 +117,10 @@ const Chat: React.FC = () => {
 
 			const res = await fetch(`${API_URL}/message/transcribe`, {
 				method: "POST",
-				headers: { Authorization: `Bearer ${token}` },
+				headers: {
+					Authorization: `Bearer ${token}`,
+					'ngrok-skip-browser-warning': 'true',
+				},
 				body: form,
 			});
 
@@ -262,7 +265,10 @@ const Chat: React.FC = () => {
 
 			const res = await fetch(`${API_URL}/message/transcribe`, {
 				method: "POST",
-				headers: { Authorization: `Bearer ${token}` },
+				headers: {
+					Authorization: `Bearer ${token}`,
+					'ngrok-skip-browser-warning': 'true',
+				},
 				body: formData,
 			});
 
@@ -307,7 +313,10 @@ const Chat: React.FC = () => {
 
 			const response = await fetch(`${API_URL}/message/getall/${conversationId}`, {
 				method: "GET",
-				headers: { "Authorization": `Bearer ${token}` },
+				headers: {
+					"Authorization": `Bearer ${token}`,
+					'ngrok-skip-browser-warning': 'true',
+				},
 			});
 			if (!response.ok) throw new Error("Error al cargar los mensajes del chat");
 
@@ -337,7 +346,8 @@ const Chat: React.FC = () => {
 			 method: 'GET',
 			 headers: {
 					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${token}`
+					'Authorization': `Bearer ${token}`,
+					'ngrok-skip-browser-warning': 'true',
 				},
 			});
 			const data = await response.json();
@@ -367,6 +377,7 @@ const Chat: React.FC = () => {
 					headers: {
 						"Content-Type": "application/json",
 						"Authorization": `Bearer ${token}`,
+						'ngrok-skip-browser-warning': 'true',
 					},
 					body: JSON.stringify({ ia_msg_in: baseMessage || "Inicio de conversación" }),
 				});
@@ -401,6 +412,7 @@ const Chat: React.FC = () => {
 				headers: {
 					"Content-Type": "application/json",
 					"Authorization": `Bearer ${token}`,
+					'ngrok-skip-browser-warning': 'true',
 				},
 				body: JSON.stringify({
 					conversation_id: conversationId,
@@ -447,7 +459,10 @@ const Chat: React.FC = () => {
 				const token = await AsyncStorage.getItem("authToken");
 				const response = await fetch(`${API_URL}/conversation/getall`, {
 					method: 'GET',
-					headers: { 'Authorization': `Bearer ${token}` },
+					headers: {
+						'Authorization': `Bearer ${token}`,
+						'ngrok-skip-browser-warning': 'true',
+					},
 				});
 				if (!response.ok) throw new Error('Error al obtener chats');
 				const dataFromBackend: { id: number, user_id: number, updated_at: string }[] = await response.json();
@@ -473,7 +488,8 @@ const Chat: React.FC = () => {
 							method: 'GET',
 							headers: {
 								'Content-Type': 'application/json',
-								'Authorization': `Bearer ${token}`
+								'Authorization': `Bearer ${token}`,
+								'ngrok-skip-browser-warning': 'true',
 							},
 						});
 						const data = await response.json();
@@ -505,7 +521,8 @@ const Chat: React.FC = () => {
 						method: 'GET',
 						headers: {
 							'Content-Type': 'application/json',
-							'Authorization': `Bearer ${token}`
+							'Authorization': `Bearer ${token}`,
+							'ngrok-skip-browser-warning': 'true',
 						},
 					});
 					const data = await response.json();

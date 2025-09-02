@@ -50,7 +50,10 @@ const SignIn = () => {
 		try {
 			const response = await fetch(`${API_URL}/users/create`, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					'ngrok-skip-browser-warning': 'true',
+				 },
 				body: JSON.stringify(payload),
 			});
 
