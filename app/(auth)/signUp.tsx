@@ -11,7 +11,6 @@ import {
 } from "react-native";
 // import { API_URL } from '@env';
 
-
 const SignIn = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
