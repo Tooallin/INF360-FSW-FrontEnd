@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Remember",
-    "slug": "Remember",
+    "name": "RememberMe",
+    "slug": "RememberMe",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
