@@ -18,7 +18,7 @@ import Constants from "expo-constants";
 
 interface Conversation {
 	id: number;
-	name: string;
+	title: string;
 }
 interface MessageMap {
 	[conversationId: number]: string[];
@@ -334,8 +334,39 @@ const Chat: React.FC = () => {
 		}
 	};
 
+	const refreshConversationTitle = async (conversationId: number) => {
+		try {
+			const token = await AsyncStorage.getItem("authToken");
+			const res = await fetch(`${API_URL}/conversation/getall`, {
+				method: 'GET',
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'ngrok-skip-browser-warning': 'true',
+				},
+			});
+			if (!res.ok) return;
+			const all = await res.json(); // debe traer { id, title, ... }
+			const found = all.find((c: any) => c.id === conversationId);
+			if (!found) return;
+
+			setConversations(prev =>
+				prev.map(c => c.id === conversationId
+					? { ...c, title: found.title ?? c.title }
+					: c
+				)
+			);
+			setCurrentConversation(prev =>
+				prev && prev.id === conversationId
+					? { ...prev, title: found.title ?? prev.title }
+					: prev
+			);
+		} catch (e) {
+			console.error('No se pudo refrescar el título', e);
+		}
+	};
+
 	const handleAddConversation = async () => {
-		const newConversation = { id: -1, name: "Nueva conversación" };
+		const newConversation = { id: -1, title: "Nueva conversación" };
 		setConversations(prev => [newConversation, ...prev]);
 		setMessages(prev => ({ ...prev, [newConversation.id]: [] }));
 		setCurrentConversation(newConversation);
@@ -387,7 +418,7 @@ const Chat: React.FC = () => {
 				conversationId = data.id;
 
 				setConversations(prev =>
-					[...prev].map(c => c.id === -1 ? { ...c, id: conversationId, name: `Conversación ${conversationId}` } : c)
+					[...prev].map(c => c.id === -1 ? { ...c, id: conversationId, title: data.title ?? `Nueva conversación` } : c)
 				);
 				setMessages(prev => {
 					const updated = { ...prev };
@@ -395,7 +426,7 @@ const Chat: React.FC = () => {
 					delete updated[-1];
 					return updated;
 				});
-				setCurrentConversation(prev => prev ? { ...prev, id: conversationId, name: `Conversación ${conversationId}` } : { id: conversationId, name: `Conversación ${conversationId}` });
+				setCurrentConversation(prev => prev ? { ...prev, id: conversationId, title: data.title ?? `Nueva conversación` } : { id: conversationId, title: data.title ?? `Nueva conversación` });
 			} catch (err) {
 				console.error("Error creando conversación:", err);
 				return;
@@ -426,6 +457,7 @@ const Chat: React.FC = () => {
 			await fetchConversationMessages(conversationId);
 			const updatedMessages = await fetchConversationMessages(conversationId);
 
+			await refreshConversationTitle(conversationId);
 			if (isAudioEnabled) {
 				const botMessages = updatedMessages.filter(msg => !msg.startsWith(' '));
 				if (botMessages.length > 0) {
@@ -467,13 +499,13 @@ const Chat: React.FC = () => {
 					},
 				});
 				if (!response.ok) throw new Error('Error al obtener chats');
-				const dataFromBackend: { id: number, user_id: number, updated_at: string }[] = await response.json();
+				const dataFromBackend: { id: number, user_id: number, title: string, updated_at: string }[] = await response.json();
 
 				let chats: Conversation[] = [];
 				if (dataFromBackend && dataFromBackend.length > 0) {
-					chats = dataFromBackend.map(chat => ({ id: chat.id, name: `Conversación ${chat.id}` }));
+					chats = dataFromBackend.map(chat => ({ id: chat.id, title: chat.title ?? `Nueva conversación` }));
 				} else {
-					chats = [{ id: -1, name: 'Nueva conversación' }];
+					chats = [{ id: -1, title: 'Nueva conversación' }];
 				}
 
 				setConversations(chats);
@@ -511,7 +543,7 @@ const Chat: React.FC = () => {
 				}
 			} catch (error) {
 				console.error('Error al obtener la lista de chats, usando chat por defecto:', error);
-				const defaultChat = [{ id: -1, name: 'Nueva conversación' }];
+				const defaultChat = [{ id: -1, title: 'Nueva conversación' }];
 				setConversations(defaultChat as any);
 				setCurrentConversation(defaultChat[0] as any);
 				setMessages(prev => ({ ...prev, [-1]: [] }));
@@ -580,14 +612,11 @@ const Chat: React.FC = () => {
 						<ScrollView>
 							{conversations.map((conv) => (
 								<TouchableOpacity
-									key={`${conv.id}-${conv.name}`}
+									key={`${conv.id}-${conv.title}`}
 									onPress={async () => {
 										setCurrentConversation(conv);
 										setIsSidebarVisible(false);
 										if (conv.id !== -1) {
-											setConversations(prev =>
-												prev.map(c => c.id === conv.id ? { ...c, name: `Conversación ${conv.id}` } : c)
-											);
 											await fetchConversationMessages(conv.id);
 										}
 									}}
@@ -600,7 +629,7 @@ const Chat: React.FC = () => {
 										styles.conversationText,
 										conv.id === currentConversation?.id && styles.activeConversationText,
 									]}>
-										{conv.name}
+										{conv.title}
 									</Text>
 								</TouchableOpacity>
 							))}
