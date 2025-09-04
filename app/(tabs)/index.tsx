@@ -27,12 +27,17 @@ interface MessageMap {
 const Chat: React.FC = () => {
 	const API_URL = Constants.expoConfig.extra.API_URL;
 	const SPEECH_OPTIONS = {
-		language: "es-ES",
-		pitch: 1.3,
-		rate: 1.0,
-		voice: "com.apple.ttsbundle.Monica-compact"
+		language: "ES-US",
+		pitch: 0.68,
+		rate: 1.1,
+		voice:  'es-us-x-esc-network',
 	};
-
+// const SPEECH_OPTIONS = {
+//   language: "es-US",
+//   pitch: 0.78,
+//   rate: 1.3,
+//   voice: "Google español de Estados Unidos"
+// };
 	const isWeb = Platform.OS === 'web';
 
 	const [useFlag, setuseFlag] = useState(false);
@@ -593,7 +598,12 @@ const Chat: React.FC = () => {
 			behavior={Platform.OS === 'android' ? 'height' : 'padding'}
 			keyboardVerticalOffset={0}
 		>
-			<View style={styles.container}>
+			<View
+				style={[
+					styles.container,
+					Platform.OS !== "web" ? { marginTop: 30 } : null
+				]}
+				>
 				{/* Sidebar */}
 				{isSidebarVisible && (
 						<LinearGradient
@@ -655,7 +665,7 @@ const Chat: React.FC = () => {
 							</TouchableOpacity>
 							<View style={styles.navbarLogoTitle}>
 								<Image
-									source={require('../../assets/images/Logo color.svg')}
+									source={require('../../assets/images/Logo_color.png')}
 									style={styles.navbarTextImage}
 								/>
 							</View>
